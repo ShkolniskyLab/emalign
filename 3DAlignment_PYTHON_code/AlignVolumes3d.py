@@ -200,7 +200,7 @@ def refine3DmatchBFGS(vol1,vol2,R1,estdx):
     # Create initial guess vector
     R1 = R.from_matrix(R1)
     [psi,theta,phi]  = R1.as_euler('xyz')
-    X0 = np.array([psi, theta, phi, estdx[0], estdx[1], estdx[2]]).astype('float64')
+    X0 = np.array([psi, theta, phi, estdx[0].real, estdx[1].real, estdx[2].real]).astype('float64')
     # BFGS optimization:
     res = minimize(eval3Dmatchaux, X0, args=(vol1,vol2), method='BFGS', tol=1e-6, options={'gtol':1e-6,'disp':False})
     X = res.x
