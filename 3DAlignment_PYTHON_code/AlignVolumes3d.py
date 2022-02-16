@@ -363,7 +363,7 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
         vol2 = np.flip(vol2, axis=2)   
         reflect = 1
         logger.info('***** Reflection detected *****')
-    logger.info('Correlation between downsampled aligned volumes is %.3f', corr_v)
+    logger.info('Correlation between downsampled aligned volumes before optimization is %.3f', corr_v)
     # Optimization:
     # We use the BFGS optimization algorithm in order to refine the resulted
     # transformation between the two volumes.    
