@@ -7,20 +7,19 @@ Created on Tue Jan 11 12:55:48 2022
 """
 
 import numpy as np
-from read_write import read_mrc
-from dev_utils import npy_to_mat, mat_to_npy
-from common_finufft import cryo_downsample
-from SymmetryGroups import genSymGroup
-from rand_rots import rand_rots
-from AlignVolumes3d import AlignVolumes
-from fastrotate3d import fastrotate3d
-from reshift_vol import reshift_vol
+from src.read_write import read_mrc
+from src.common_finufft import cryo_downsample
+from src.SymmetryGroups import genSymGroup
+from src.rand_rots import rand_rots
+from src.AlignVolumes3d import AlignVolumes
+from src.fastrotate3d import fastrotate3d
+from src.reshift_vol import reshift_vol
 
 
 # Test for volume alignment
 
 # Read molecule:
-vol = read_mrc('0825_C6.mrc')
+vol = read_mrc('/scratch/yaelharpaz1/3DAlignment_PYTHON/0825_C6.mrc')
 sym = 'C6'
 
 #vol = read_mrc('10280_C1.mrc')
@@ -49,7 +48,7 @@ R_true = rand_rots(1).reshape((3,3))
 vol_c = np.copy(vol)
 vol_rotated = fastrotate3d(vol_c, R_true)
 vol_rotated =  np.flip(vol_rotated, axis=2)  
-vol_rotated = reshift_vol(vol_rotated, np.array([-5, 0 ,0]))
+vol_rotated = reshift_vol(vol_rotated, np.array([-5, 0, 0]))
 
 # Alignment algorithm:
 G = genSymGroup(sym)    

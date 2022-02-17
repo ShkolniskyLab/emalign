@@ -9,9 +9,7 @@ Created on Thu Jul  8 16:33:25 2021
 import numpy as np
 import math
 from numpy import fft
-from pyfftw.interfaces.numpy_fft import ifftn, ifft2
 from numpy import linalg as LA
-from dev_utils import npy_to_mat, mat_to_npy
 
 
 def E3(deltax,rho,N,idx):  

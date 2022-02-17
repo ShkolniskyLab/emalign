@@ -10,15 +10,14 @@ import math
 from numpy import linalg as LA
 from scipy.optimize import minimize
 from scipy.spatial.transform import Rotation as R
-from common_finufft import cryo_downsample
-#from dev_utils import mat_to_npy
-from cryo_project_itay_finufft import cryo_project
-from genRotationsGrid import genRotationsGrid
-from AlignProjection2d import AlignProjection
-from fastrotate3d import fastrotate3d
-from register_translations_3d import register_translations_3d
-from reshift_vol import reshift_vol
-from SymmetryGroups import genSymGroup
+from src.common_finufft import cryo_downsample
+from src.cryo_project_itay_finufft import cryo_project
+from src.genRotationsGrid import genRotationsGrid
+from src.AlignProjection2d import AlignProjection
+from src.fastrotate3d import fastrotate3d
+from src.register_translations_3d import register_translations_3d
+from src.reshift_vol import reshift_vol
+from src.SymmetryGroups import genSymGroup
 
 def fastAlignment3D(sym,vol1,vol2,n,Nprojs=30,trueR=None,G_group=None,refrot=0,verbose=0):
     '''
@@ -249,7 +248,7 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
                      best aligned with vol1 (after optimization). 
         bestcorr- the coorelation between vol1 and vol2aligned.
     Options:
-        sym- the symmetry type- 'Cn'\'Dn'\'T'\'O'\'I', where n is the the 
+        sym- the symmetry type- 'Cn'\'Dn'\'T'\'O'\'I', where n is the the
              symmetry order (for example: 'C2'). This input is required only for 
              the error calculation.
         opt.downsample-  Downsample the volume to this size (in pixels) for
@@ -333,7 +332,7 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
         G_c = np.copy(G)
     else:
         G_c = None
-    R_est,R_est_J = fastAlignment3D(sym,vol1_ds,vol2_ds,n_ds,Nprojs,trueR,G_c,refrot,verbose);  
+    R_est,R_est_J = fastAlignment3D(sym,vol1_ds,vol2_ds,n_ds,Nprojs,trueR,G_c,refrot,verbose)
     
     vol2_ds_c = np.copy(vol2_ds)                             
     vol2_aligned_ds = fastrotate3d(vol2_ds_c,R_est) # Rotate the original vol_2 back.

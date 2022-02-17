@@ -7,7 +7,6 @@ Created on Thu Dec  2 11:54:51 2021
 """
 
 import numpy as np
-import math
 from numpy import fft
 from numpy import linalg as LA
 
