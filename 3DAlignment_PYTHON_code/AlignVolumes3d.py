@@ -11,12 +11,12 @@ from numpy import linalg as LA
 from scipy.optimize import minimize
 from scipy.spatial.transform import Rotation as R
 from common_finufft import cryo_downsample
-#from dev_utils import mat_to_npy
+from dev_utils import mat_to_npy
 from cryo_project_itay_finufft import cryo_project
 from genRotationsGrid import genRotationsGrid
 from AlignProjection2d import AlignProjection
 from fastrotate3d import fastrotate3d
-from register_translations_3d import register_translations_3d
+from register_translations_3d_modified import register_translations_3d
 from reshift_vol import reshift_vol
 from SymmetryGroups import genSymGroup
 import logging
@@ -41,14 +41,17 @@ def fastAlignment3D(sym,vol1,vol2,n,Nprojs=30,trueR=None,G_group=None,refrot=0,v
     Rest- the estimated rotation between vol_2 and vol_1 without reflection.
     Rest_J- the estimated rotation between vol_2 and vol_1 with reflection.
     '''
-    logger = logging.getLogger('tcpserver')
-    logger.setLevel(logging.INFO)   
+    logging.basicConfig(level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s')
+    logger = logging.getLogger()
     if verbose == 0 : logger.disabled = True   
     # Generate reference projections from vol2:
     logger.info('Generating %i reference projections.', Nprojs) 
     Rots = genRotationsGrid(75)
     sz_Rots = np.size(Rots,2)
     R_ref = Rots[:,:,np.random.randint(sz_Rots, size=Nprojs)] # size (3,3,N_projs)    
+    #R_ref = mat_to_npy('R_ref_for_fastAlignment3D')
+
     ref_projs = cryo_project(vol2, R_ref)
     ref_projs = np.transpose(ref_projs,(1,0,2))
     R_ref = np.transpose(R_ref,(1,0,2))   # the true rotations.   
@@ -191,8 +194,8 @@ def eval3Dmatchaux(X,vol1,vol2):
     vol2_r = fastrotate3d(vol2.copy(),Rot)   
     
     vol2_rs = reshift_vol(vol2_r,np.array([dx,dy,dz]))    
-    c = np.mean(np.corrcoef(vol1.ravel(),vol2_rs.ravel())).astype('float64')
-    e = 1-c
+    c = np.mean(np.corrcoef(vol1.ravel(),vol2_rs.ravel(),rowvar=False)[0,1:]).astype('float64') 
+    e = (1-c).astype('float64')
     return e
 
 #%%
@@ -202,7 +205,7 @@ def refine3DmatchBFGS(vol1,vol2,R1,estdx):
     [psi,theta,phi]  = R1.as_euler('xyz')
     X0 = np.array([psi, theta, phi, estdx[0].real, estdx[1].real, estdx[2].real]).astype('float64')
     # BFGS optimization:
-    res = minimize(eval3Dmatchaux, X0, args=(vol1,vol2), method='BFGS', tol=1e-6, options={'gtol':1e-6,'disp':False})
+    res = minimize(eval3Dmatchaux, X0, args=(vol1,vol2), method='BFGS', tol=1e-4, options={'gtol':1e-4,'disp':False})
     X = res.x
     psi = X[0]; theta = X[1]; phi = X[2];
     Rest = R.from_euler('xyz', [psi, theta, phi], degrees=False) 
@@ -273,8 +276,9 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
                optimization over the symmetry group. 
     '''
     
-    logger = logging.getLogger('tcpserver')
-    logger.setLevel(logging.INFO)   
+    logging.basicConfig(level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s')
+    logger = logging.getLogger()  
     if verbose == 0 : logger.disabled = True 
     
     ### Check options: 
@@ -333,21 +337,21 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
         G_c = np.copy(G)
     else:
         G_c = None
-    R_est,R_est_J = fastAlignment3D(sym,vol1_ds,vol2_ds,n_ds,Nprojs,trueR,G_c,refrot,verbose);  
+    R_est,R_est_J = fastAlignment3D(sym,vol1_ds.copy(),vol2_ds.copy(),n_ds,Nprojs,trueR,G_c,refrot,verbose);  
                            
     vol2_aligned_ds = fastrotate3d(vol2_ds.copy(),R_est) # Rotate the original vol_2 back.
     vol2_aligned_J_ds = fastrotate3d(vol2_ds.copy(),R_est_J)
     
     vol2_aligned_J_ds = np.flip(vol2_aligned_J_ds, axis=2)    
-    estdx_ds = register_translations_3d(vol1_ds,vol2_aligned_ds)
-    estdx_J_ds = register_translations_3d(vol1_ds,vol2_aligned_J_ds)
+    estdx_ds = register_translations_3d(vol1_ds.copy(),vol2_aligned_ds.copy()).real
+    estdx_J_ds = register_translations_3d(vol1_ds.copy(),vol2_aligned_J_ds.copy()).real
     if np.size(estdx_ds) != 3 or np.size(estdx_J_ds) != 3:
         raise Warning("***** Translation estimation failed *****")
     vol2_aligned_ds = reshift_vol(vol2_aligned_ds,estdx_ds)  
-    vol2_aligned_J_ds_s = reshift_vol(vol2_aligned_J_ds,estdx_J_ds)    
-    no1 = np.mean(np.corrcoef(vol1_ds.ravel(),vol2_aligned_ds.ravel()))           
-    no2 = np.mean(np.corrcoef(vol1_ds.ravel(),vol2_aligned_J_ds_s.ravel()))  
-        
+    vol2_aligned_J_ds = reshift_vol(vol2_aligned_J_ds,estdx_J_ds)    
+    no1 = np.mean(np.corrcoef(vol1_ds.ravel(),vol2_aligned_ds.ravel(),rowvar=False)[0,1:])          
+    no2 = np.mean(np.corrcoef(vol1_ds.ravel(),vol2_aligned_J_ds.ravel(),rowvar=False)[0,1:])  
+    
     if max(no1,no2) < 0.1: # The coorelations of the estimated rotations are 
            # smaller than 0.1, that is, no transformation was recovered. 
            raise Warning("***** Alignment failed *****")
@@ -363,22 +367,23 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
         vol2 = np.flip(vol2, axis=2)   
         reflect = 1
         logger.info('***** Reflection detected *****')
-    logger.info('Correlation between downsampled aligned volumes before optimization is %.3f', corr_v)
+    logger.info('Correlation between downsampled aligned volumes before optimization is %.4f', corr_v)
     # Optimization:
     # We use the BFGS optimization algorithm in order to refine the resulted
     # transformation between the two volumes.    
-    bestR = refine3DmatchBFGS(vol1_ds,vol2_ds,R_est,estdx_ds)
+    bestR = refine3DmatchBFGS(vol1_ds.copy(),vol2_ds.copy(),R_est,estdx_ds)
     bestR = R.as_matrix(bestR)
     logger.info('Done aligning downsampled volumes')
     logger.info('Applying estimated rotation to original volumes')       
     vol2aligned = fastrotate3d(vol2.copy(),bestR)
-    bestdx = register_translations_3d(vol1,vol2aligned)
-    if np.size(bestdx) != 3 :
-        raise Warning("***** Translation estimation failed *****")
-    vol2aligned = reshift_vol(vol2aligned,bestdx)    
-    bestcorr = np.mean(np.corrcoef(vol1.ravel(),vol2aligned.ravel()))
+    bestdx = register_translations_3d(vol1.copy(),vol2aligned.copy())
+    #if np.size(bestdx) != 3 :
+    #    raise Warning("***** Translation estimation failed *****")
+    vol2aligned = reshift_vol(vol2aligned,bestdx)      
+    bestcorr = np.mean(np.corrcoef(vol1.ravel(),vol2aligned.ravel(),rowvar=False)[0,1:])  
+    
     logger.info('Estimated translations: [%.3f, %.3f, %.3f]',bestdx[0].real, bestdx[1].real, bestdx[2].real)
-    logger.info('Correlation between original aligned volumes is %.3f', bestcorr)  
+    logger.info('Correlation between original aligned volumes is %.4f', bestcorr)  
     # Accurate error calculation:
     # The difference between the estimated and reference rotation should be an
     # element from the symmetry group:

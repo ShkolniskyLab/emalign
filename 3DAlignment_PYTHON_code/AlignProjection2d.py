@@ -17,9 +17,8 @@ import numpy as np
 import math
 import cmath
 import logging
-import sys
 
-#from dev_utils import mat_to_npy
+from dev_utils import mat_to_npy
 from cryo_project_itay_finufft import cryo_project
 from common_finufft import cryo_pft
 from commonline_R2 import commonline_R2, cryo_normalize
@@ -70,8 +69,9 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
         opt.trueShifts- the true shifts-(dx,dy) of projs.
         opt.Rots - size=3x3x(size(Rots,3)). a set of candidate rotations.
     '''
-    logger = logging.getLogger('tcpserver')
-    logger.setLevel(logging.INFO)   
+    logging.basicConfig(level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s')
+    logger = logging.getLogger()  
     if verbose == 0 : logger.disabled = True
     
     # Check options:
@@ -143,6 +143,8 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     Nrot = np.size(candidate_rots,2)
     logger.info('Using %i candidate rotations for the alignment', Nrot)     
     rots_ref = Rots[:,:,np.random.randint(Nrot, size=Nref)] 
+    #rots_ref = mat_to_npy('rots_ref_for_AlignProjection2D')
+    
     ref_projs = cryo_project(vol, rots_ref)    
     ref_projs = np.transpose(ref_projs,(1,0,2))  
     rots_ref = np.transpose(rots_ref,(1,0,2)) # the true rots
@@ -277,10 +279,10 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
                 err_shifts[1,projidx] = LA.norm(trueShifts[projidx,1]-shifts[1,projidx],2)
     if refrot == 1 and G_flag == 1:
         mean_err = np.mean(err_Rots)
-        logger.info('Mean error in estimating the rotations of the projections is: %.4f degrees', mean_err)
+        logger.info('Mean error in estimating the rotations of the projections is: %.3f degrees', mean_err)
     if isshift == 1 and refshift == 1:
         mean_err_shift = np.mean(err_shifts)
-        logger.info('Mean error in estimating the translations of the projections is: %.f', mean_err_shift)
+        logger.info('Mean error in estimating the translations of the projections is: %.3f', mean_err_shift)
         
     logging.shutdown()
     
