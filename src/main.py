@@ -42,12 +42,12 @@ def main():
     vol2 = read_mrc(args.vol2)
 
     # If we decide to downsample them to the same size
-    n1 = vol1.shape[0]
-    n2 = vol2.shape[0]
-    if n1 < n2:
-        vol2 = cryo_downsample(vol2,(n1, n1, n1))
-    elif n2 < n1:
-        vol1 = cryo_downsample(vol1, (n2, n2, n2))
+    # n1 = vol1.shape[0]
+    # n2 = vol2.shape[0]
+    # if n1 < n2:
+    #     vol2 = cryo_downsample(vol2,(n1, n1, n1))
+    # elif n2 < n1:
+    #     vol1 = cryo_downsample(vol1, (n2, n2, n2))
 
     # create params
     class Struct:
