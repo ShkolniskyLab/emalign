@@ -18,13 +18,13 @@ import math
 import cmath
 import logging
 
-from dev_utils import mat_to_npy
-from cryo_project_itay_finufft import cryo_project
-from common_finufft import cryo_pft
-from commonline_R2 import commonline_R2, cryo_normalize
-from genRotationsGrid import genRotationsGrid
+from src.cryo_project_itay_finufft import cryo_project
+from src.common_finufft import cryo_pft
+from src.commonline_R2 import commonline_R2, cryo_normalize
+from src.genRotationsGrid import genRotationsGrid
 from numpy import linalg as LA
 
+logger = logging.getLogger(__name__)
 
 def AlignProjection(projs,vol,verbose=0,opt=None):
     '''
@@ -69,12 +69,16 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
         opt.trueShifts- the true shifts-(dx,dy) of projs.
         opt.Rots - size=3x3x(size(Rots,3)). a set of candidate rotations.
     '''
-    logging.basicConfig(level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s %(message)s')
-    logger = logging.getLogger()  
-    if verbose == 0 : logger.disabled = True
-    
     # Check options:
+    if opt is None:        
+        class Struct:
+            pass
+        opt = Struct() 
+        opt.sym = None  
+        opt.Nref = 30
+        opt.G = None
+        opt.downsample = 48
+        opt.trueR = None
         
     if hasattr(opt,'sym'): sym = opt.sym
     else: sym = None
@@ -101,14 +105,15 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     else: Rots = None  
     
     # Define parameters:
-    G_flag = 0
-    if sym is not None:   
+    er_calc = 0    
+    if sym is not None: 
         s = sym[0] 
         n_s = 0
-        if s == 'C' and n_s == 1: 
-            G = np.eye(3).reshape((1,3,3))     
-    if G is not None:
-        G_flag = 1   
+        if len(sym) > 1: n_s = int(sym[1:len(sym)])
+        er_calc = 1
+        if s == 'C' and n_s == 1: G = np.eye(3).reshape((1,3,3))
+        elif G is None: er_calc = 0
+    if G is not None: 
         # The symmetry group should be adjusted so it will be acurate for the 
         # projection images. We use the permute function on the projections 
         # such that it replaces the x-axis and the y-axis, so we have to do the
@@ -126,39 +131,44 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     canrots = 1
     if Rots is None: canrots = 0                
     n = np.size(vol,0); n_r = math.ceil(n/2); L = 360
-                        
+    
     # Compute polar Fourier transform of projs:
-    logger.info('Computing polar Fourier transform of unaligned projections using n_r= %i, L= %i',n_r,L)  
+    if verbose != 0:
+        print('Computing polar Fourier transform of unaligned projections using n_r=',n_r,'L=',L)
     projs_hat = cryo_pft(projs,n_r,L)[0]
     # Normalize polar Fourier transforms:
-    logger.info('Normalizing the polar Fourier transform of unaligned projections')
+    if verbose != 0:
+        print('Normalizing the polar Fourier transform of unaligned projections')
     projs_hat = cryo_normalize(projs_hat)
     n_projs = np.size(projs_hat,2)
     
     # Generate candidate rotations and reference projections:
-    logger.info('Generating %i reference projections', Nref)
+    if verbose != 0:
+        print('Generating ',Nref ,' reference projections')
     if canrots == 0:
         Rots = genRotationsGrid(75)
     candidate_rots = Rots
     Nrot = np.size(candidate_rots,2)
-    logger.info('Using %i candidate rotations for the alignment', Nrot)     
+    if verbose != 0:
+        print('Using ', Nrot, ' candidate rotations for the alignment')    
     rots_ref = Rots[:,:,np.random.randint(Nrot, size=Nref)] 
-    #rots_ref = mat_to_npy('rots_ref_for_AlignProjection2D')
-    
     ref_projs = cryo_project(vol, rots_ref)    
     ref_projs = np.transpose(ref_projs,(1,0,2))  
     rots_ref = np.transpose(rots_ref,(1,0,2)) # the true rots
     
     # Compute polar Fourier transform of reference projections:
-    logger.info('Computing polar Fourier transform of reference projections using n_r=%i, L=%i', n_r, L)
+    if verbose != 0:
+        print('Computing polar Fourier transform of reference projections using n_r=',n_r,' L=',L)
     refprojs_hat = cryo_pft(ref_projs,n_r,L)[0]
     # Normalize polar Fourier transforms:
-    logger.info('Normalizing the polar Fourier transform of reference projections')
+    if verbose != 0:
+        print('Normalizing the polar Fourier transform of reference projections')
     refprojs_hat = cryo_normalize(refprojs_hat)
     
     # Compute the common lines between the candidate rotations and the 
     # references:
-    logger.info('Computing the common lines between reference and unaligned projections')     
+    if verbose != 0:
+        print('Computing the common lines between reference and unaligned projections')    
     Ckj = (-1)*np.ones((Nrot,Nref),dtype=int)
     Cjk = (-1)*np.ones((Nrot,Nref),dtype=int)
     Mkj = np.zeros((Nrot,Nref),dtype=int)
@@ -172,8 +182,8 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
                 Ckj[k,j] = ckj
                 Cjk[k,j] = cjk
                 Mkj[k,j] = 1
-    logger.info('Computing the common lines is done')
-    
+    if verbose != 0:
+        print('Computing the common lines is done')
     # Generate shift grid:
     # generating a shift grid on the common lines, and choosing the shift
     # that brings the best correlation in the comparisson between the common 
@@ -195,14 +205,15 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     # Main loop- compute the cross correlation: 
     # computing the correlation between the common line, first choose the best
     # shift, and then chose the best rotation.
-    logger.info('Aligning unaligned projections using reference projections')
+    if verbose != 0:
+        print('Aligning unaligned projections using reference projections')
     Rots_est = np.zeros((3,3,n_projs))
     corrs = np.zeros((n_projs,2)) # Statistics on common-lines matching.
     shifts = np.zeros((2,n_projs))
     dtheta = 2*math.pi/L
-    if refrot == 1:
+    if refrot != 0:
         err_Rots = np.zeros((n_projs,1))
-    if refshift == 1:
+    if refshift != 0:
         err_shifts = np.zeros((2,n_projs))
     for projidx in range(n_projs):
         cross_corr_m = np.zeros((Nrot,Nref))
@@ -221,7 +232,7 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
         corrs[projidx,1] = meanRscore
         Rots_est[:,:,projidx] = candidate_rots[:,:,bestRidx]       
         # Error calculation for estimated rotation:
-        if refrot == 1 and G_flag == 1:
+        if refrot != 0 and er_calc != 0:
             g_est_t = Rots_est[:,:,projidx] @ trueRots[:,:,projidx].T
             n_g = np.size(G,0)
             dist = np.zeros((n_g,1))
@@ -235,7 +246,7 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
         # Error calculation for reflection case:
         # if there is a reflection between the projection and the volume
         # then, the relation is R_est=gJRJ.
-        if refrot_J == 1 and G_flag == 1:
+        if refrot_J != 0 and er_calc != 0:
             J3 = np.diag([1, 1, -1])
             g_est_t = Rots_est[:,:,projidx] @ (J3 @ trueRots_J[:,:,projidx] @ J3).T
             n_g = np.size(G,0)
@@ -257,7 +268,7 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
         
         # Find estimated shift:
         # by least-squares on the estimated rotation with the reference projections. 
-        if isshift == 1:
+        if isshift != 0:
             idx = np.array(np.where(Mkj[bestRidx,:] == 1)).transpose()
             n = np.size(idx,0)
             shift_eq = np.zeros((n,2))
@@ -277,20 +288,20 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
             if refshift != 0:
                 err_shifts[0,projidx] = LA.norm(trueShifts[projidx,0]-shifts[0,projidx],2)
                 err_shifts[1,projidx] = LA.norm(trueShifts[projidx,1]-shifts[1,projidx],2)
-    if refrot == 1 and G_flag == 1:
+    if refrot != 0 and er_calc != 0:
         mean_err = np.mean(err_Rots)
-        logger.info('Mean error in estimating the rotations of the projections is: %.3f degrees', mean_err)
-    if isshift == 1 and refshift == 1:
+        if verbose != 0:
+            print('Mean error in estimating the rotations of the projections is: ', format(mean_err,".4f"), ' degrees')
+    if isshift != 0 and refshift != 0:
         mean_err_shift = np.mean(err_shifts)
-        logger.info('Mean error in estimating the translations of the projections is: %.3f', mean_err_shift)
-        
-    logging.shutdown()
+        if verbose != 0:
+            print('Mean error in estimating the translations of the projections is: ', format(mean_err_shift,".4f"))
     
-    if refrot != 0 and G_flag != 0 and isshift != 0 and refshift != 0:
+    if refrot != 0 and er_calc != 0 and isshift != 0 and refshift != 0:
         return Rots_est, shifts, corrs, err_Rots, err_shifts
-    elif refrot != 0 and G_flag != 0 and isshift == 0 and refshift == 0:
+    elif refrot != 0 and er_calc != 0 and isshift == 0 and refshift == 0:
         return Rots_est, shifts, corrs, err_Rots
-    elif refrot == 0 and G_flag == 0 and isshift != 0 and refshift != 0:
+    elif refrot == 0 and er_calc == 0 and isshift != 0 and refshift != 0:
         return Rots_est, shifts, corrs, err_shifts
     else:
         return Rots_est, shifts, corrs

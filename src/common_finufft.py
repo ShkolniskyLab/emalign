@@ -7,12 +7,9 @@ Created on Wed Feb  3 13:20:15 2021
 """
 
 import numpy as np
-import scipy.special as sp
 import finufft
 
-from numpy.fft import fftshift, ifftshift
-from pyfftw.interfaces.numpy_fft import fft2, ifft2
-from numpy.polynomial.legendre import leggauss
+from pyfftw.interfaces.numpy_fft import ifft2
 
     
     

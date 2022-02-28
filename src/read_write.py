@@ -6,14 +6,7 @@ This is a temporary script file.
 """
 
 import mrcfile
-import os
 import numpy as np
-from scipy.io import loadmat, savemat
-
-
-def read_file(file_path):
-    file_name, file_extention = os.path.splitext(file_path)
-    return
 
 
 def write_mrc(file_path, x):
