@@ -1,6 +1,5 @@
 import warnings
 from sys import exit, argv
-import numpy as np
 from src.emalign_input import check_for_newer_version, get_args, parse_args
 from src.AlignVolumes3d import AlignVolumes
 from src.read_write import read_mrc, write_mrc
@@ -42,7 +41,7 @@ def main():
     vol1 = read_mrc(args.vol1)
     vol2 = read_mrc(args.vol2)
 
-    # Testing purpose
+    # If we decide to downsample them to the same size
     n1 = vol1.shape[0]
     n2 = vol2.shape[0]
     if n1 < n2:
@@ -66,10 +65,7 @@ def main():
 
     # Save parameters
     if args.output_parameters is not None:
-        lines = ['param1:\n{}'.format(bestR), 'param2:\t{}'.format(bestdx),
-                 'param3:\t{}'.format(reflect), 'param4:\t{}'.format(bestcorr)]
+        lines = ['reflect:\t{}'.format(reflect), 'correlation:\t{}'.format(bestcorr),
+                 'estimated translation:\t{}'.format(bestdx), 'rotation:\n{}'.format(bestR)]
         with open(args.output_parameters, 'w') as f:
             f.writelines('\n'.join(lines))
-
-
-# -v1 /scratch/yaelharpaz1/3DAlignment_PYTHON/0825_C6.mrc -v2 /scratch/yaelharpaz1/3DAlignment_PYTHON/4179_T.mrc -o /scratch/itaysason/yes/output1.mrc --verbose --output-parameters /scratch/itaysason/yes/output_params.txt
