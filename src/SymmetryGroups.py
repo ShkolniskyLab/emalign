@@ -43,7 +43,7 @@ def genSymGroup(sym):
         theta = 2*180/n_s    
         for i in range(n_s):
             G[i,:,:] = R.from_euler('z', i*theta, degrees=True).as_matrix()
-        G[n_s,:,:] = R.from_euler('x', 180, degrees=True).as_matrix()
+        G[n_s,:,:] = R.from_euler('y', 180, degrees=True).as_matrix()
         for i in range(1,n_s):
             G[n_s+i,:,:] = np.matmul(G[n_s,:,:],G[i,:,:])        
     #%% T symmetry group:

@@ -17,9 +17,11 @@ from src.reshift_vol import reshift_vol
 
 
 # Test for volume alignment
+#np.random.seed(1337)
+np.random.seed(2021)
 
 # Read molecule:
-vol = read_mrc('/scratch/yaelharpaz1/3DAlignment_PYTHON/0825_C6.mrc')
+vol = read_mrc('0825_C6.mrc')
 sym = 'C6'
 
 #vol = read_mrc('10280_C1.mrc')
@@ -48,7 +50,7 @@ R_true = rand_rots(1).reshape((3,3))
 vol_c = np.copy(vol)
 vol_rotated = fastrotate3d(vol_c, R_true)
 vol_rotated =  np.flip(vol_rotated, axis=2)  
-vol_rotated = reshift_vol(vol_rotated, np.array([-5, 0, 0]))
+vol_rotated = reshift_vol(vol_rotated, np.array([-5, 0 ,0]))
 
 # Alignment algorithm:
 G = genSymGroup(sym)    

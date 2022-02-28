@@ -248,7 +248,7 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
                      best aligned with vol1 (after optimization). 
         bestcorr- the coorelation between vol1 and vol2aligned.
     Options:
-        sym- the symmetry type- 'Cn'\'Dn'\'T'\'O'\'I', where n is the the
+        sym- the symmetry type- 'Cn'\'Dn'\'T'\'O'\'I', where n is the the 
              symmetry order (for example: 'C2'). This input is required only for 
              the error calculation.
         opt.downsample-  Downsample the volume to this size (in pixels) for
@@ -332,7 +332,7 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
         G_c = np.copy(G)
     else:
         G_c = None
-    R_est,R_est_J = fastAlignment3D(sym,vol1_ds,vol2_ds,n_ds,Nprojs,trueR,G_c,refrot,verbose)
+    R_est,R_est_J = fastAlignment3D(sym,vol1_ds,vol2_ds,n_ds,Nprojs,trueR,G_c,refrot,verbose);  
     
     vol2_ds_c = np.copy(vol2_ds)                             
     vol2_aligned_ds = fastrotate3d(vol2_ds_c,R_est) # Rotate the original vol_2 back.
