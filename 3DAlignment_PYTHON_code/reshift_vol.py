@@ -47,7 +47,7 @@ def reshift_vol(vol,s):
     phases = phase_x*phase_y*phase_z
     pim = fft.fftshift(fft.fftn(fft.ifftshift(vol)))
     pim = pim*phases
-    svol = fft.fftshift(fft.ifftn(fft.ifftshift(pim)).real) #**** seems like precision error affect the result
+    svol = fft.fftshift(fft.ifftn(fft.ifftshift(pim)).real) 
     if LA.norm(np.imag(svol[:]))/LA.norm(svol[:]) > 1.0e-8:
         raise ValueError("Large imaginary components")
     svol = np.real(svol)

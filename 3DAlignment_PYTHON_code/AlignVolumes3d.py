@@ -16,7 +16,7 @@ from cryo_project_itay_finufft import cryo_project
 from genRotationsGrid import genRotationsGrid
 from AlignProjection2d import AlignProjection
 from fastrotate3d import fastrotate3d
-from register_translations_3d_modified import register_translations_3d
+from register_translations_3d import register_translations_3d
 from reshift_vol import reshift_vol
 from SymmetryGroups import genSymGroup
 import logging
