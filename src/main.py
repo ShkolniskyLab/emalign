@@ -30,7 +30,7 @@ def main():
 
     else:  # User didn't enter arguments, use interactive mode to get arguments.
         args = parse_args()  # Initiate args with default values.
-        args.vol1, args.vol2, args.output_vol, args.downsample, args.n_projs, args.verbose = get_args()
+        args.vol1, args.vol2, args.output_vol, args.downsample, args.n_projs, args.output_parameters, args.verbose = get_args()
 
     # Check newer version
     try:
@@ -63,3 +63,13 @@ def main():
 
     # Save
     write_mrc(args.output_vol, vol2aligned)
+
+    # Save parameters
+    if args.output_parameters is not None:
+        lines = ['param1:\n{}'.format(bestR), 'param2:\t{}'.format(bestdx),
+                 'param3:\t{}'.format(reflect), 'param4:\t{}'.format(bestcorr)]
+        with open(args.output_parameters, 'w') as f:
+            f.writelines('\n'.join(lines))
+
+
+# -v1 /scratch/yaelharpaz1/3DAlignment_PYTHON/0825_C6.mrc -v2 /scratch/yaelharpaz1/3DAlignment_PYTHON/4179_T.mrc -o /scratch/itaysason/yes/output1.mrc --verbose --output-parameters /scratch/itaysason/yes/output_params.txt
