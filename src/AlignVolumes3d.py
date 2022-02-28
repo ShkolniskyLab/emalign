@@ -39,12 +39,17 @@ def fastAlignment3D(sym,vol1,vol2,n,Nprojs=30,trueR=None,G_group=None,refrot=0,v
     Rest- the estimated rotation between vol_2 and vol_1 without reflection.
     Rest_J- the estimated rotation between vol_2 and vol_1 with reflection.
     '''
+    logging.basicConfig(level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s')
+    logger = logging.getLogger()
+    if verbose == 0 : logger.disabled = True   
     # Generate reference projections from vol2:
-    if verbose != 0:
-        print('Generating', Nprojs, 'reference projections.')
+    logger.info('Generating %i reference projections.', Nprojs) 
     Rots = genRotationsGrid(75)
     sz_Rots = np.size(Rots,2)
     R_ref = Rots[:,:,np.random.randint(sz_Rots, size=Nprojs)] # size (3,3,N_projs)    
+    #R_ref = mat_to_npy('R_ref_for_fastAlignment3D')
+
     ref_projs = cryo_project(vol2, R_ref)
     ref_projs = np.transpose(ref_projs,(1,0,2))
     R_ref = np.transpose(R_ref,(1,0,2))   # the true rotations.   
@@ -53,8 +58,7 @@ def fastAlignment3D(sym,vol1,vol2,n,Nprojs=30,trueR=None,G_group=None,refrot=0,v
         pass
     opt = Struct()    
     opt.Nprojs = Nprojs; opt.G = G_group; opt.Rots = Rots; opt.sym = sym;
-    if verbose != 0:
-        print('Aligning reference projections of vol2 to vol1.')    
+    logger.info('Aligning reference projections of vol2 to vol1.')  
     if refrot == 1:
         R = trueR; R = R.T; R = R[:, [1, 0, 2]][[1, 0, 2]];
         trueR_tild = np.zeros((3,3,Nprojs))
@@ -169,6 +173,9 @@ def fastAlignment3D(sym,vol1,vol2,n,Nprojs=30,trueR=None,G_group=None,refrot=0,v
     assert LA.det(R_est_J) > 0
     R_est_J = R_est_J[:, [1, 0, 2]][[1, 0, 2]]
     R_est_J = R_est_J.T
+    
+    logging.shutdown()
+    
     return R_est, R_est_J
 
 #%%
@@ -181,14 +188,12 @@ def eval3Dmatchaux(X,vol1,vol2):
     dz = X[5]    
     r = R.from_euler('xyz', [psi, theta, phi], degrees=False)
     Rot = r.as_matrix()  
-    
-    vol2_c = np.copy(vol2)   
-    vol2_r = fastrotate3d(vol2_c,Rot)   
-    vol2_c = np.copy(vol2)
+      
+    vol2_r = fastrotate3d(vol2.copy(),Rot)   
     
     vol2_rs = reshift_vol(vol2_r,np.array([dx,dy,dz]))    
-    c = np.mean(np.corrcoef(vol1.ravel(),vol2_rs.ravel())).astype('float64')
-    e = 1-c
+    c = np.mean(np.corrcoef(vol1.ravel(),vol2_rs.ravel(),rowvar=False)[0,1:]).astype('float64') 
+    e = (1-c).astype('float64')
     return e
 
 #%%
@@ -196,9 +201,9 @@ def refine3DmatchBFGS(vol1,vol2,R1,estdx):
     # Create initial guess vector
     R1 = R.from_matrix(R1)
     [psi,theta,phi]  = R1.as_euler('xyz')
-    X0 = np.array([psi, theta, phi, estdx[0], estdx[1], estdx[2]]).astype('float64')
+    X0 = np.array([psi, theta, phi, estdx[0].real, estdx[1].real, estdx[2].real]).astype('float64')
     # BFGS optimization:
-    res = minimize(eval3Dmatchaux, X0, args=(vol1,vol2), method='BFGS', tol=1e-6, options={'gtol':1e-6,'disp':False})
+    res = minimize(eval3Dmatchaux, X0, args=(vol1,vol2), method='BFGS', tol=1e-4, options={'gtol':1e-4,'disp':False})
     X = res.x
     psi = X[0]; theta = X[1]; phi = X[2];
     Rest = R.from_euler('xyz', [psi, theta, phi], degrees=False) 
@@ -268,17 +273,13 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
                G is not submitted then the error will be calculated by 
                optimization over the symmetry group. 
     '''
+    
+    logging.basicConfig(level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s')
+    logger = logging.getLogger()  
+    if verbose == 0 : logger.disabled = True 
+    
     ### Check options: 
-    if opt is None:        
-        class Struct:
-            pass
-        opt = Struct() 
-        opt.sym = None  
-        opt.Nref = 30
-        opt.G = None
-        opt.downsample = 48
-        opt.trueR = None
-
     if hasattr(opt,'sym'): sym = opt.sym
     else: sym = None
     
@@ -292,19 +293,22 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
     else: trueR = None
     
     if hasattr(opt,'downsample'): downsample = opt.downsample
-    else: downsample = 48
+    else: downsample = 64
     
     ### Define parameters:
-    er_calc = 0
+    sym_flag = 0
+    G_flag = 0
     if sym is not None:   
         s = sym[0] 
         n_s = 0
         if len(sym) > 1: n_s = int(sym[1:len(sym)])
-        er_calc = 1
-        if s == 'C' and n_s == 1: G = np.eye(3).reshape((1,3,3))
-        elif G is None: er_calc = 0
+        sym_flag = 1
+        if s == 'C' and n_s == 1: 
+            G = np.eye(3).reshape((1,3,3))       
+    if G is not None:
+        G_flag = 1     
     refrot = 1
-    if trueR is None: refrot = 0
+    if trueR is None: refrot = 0   
     
     # Validate input:
     # Input volumes must be 3-dimensional, where all dimensions must be equal.
@@ -322,32 +326,30 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
     n_ds = min(n,downsample) # Perform aligment on down sampled volumes.  
                              # This speeds up calculation, and does not seem 
                              # to degrade accuracy
-    if verbose != 0:
-        print('Downsampling volumes from ', n, ' to ', n_ds, ' pixels')
+    logger.info('Downsampling volumes from %i to %i pixels', n, n_ds)
     vol1_ds = cryo_downsample(vol1,(n_ds, n_ds, n_ds))
     vol2_ds = cryo_downsample(vol2,(n_ds, n_ds, n_ds))
     
     # Aligning the volumes:
-    if G is not None:
+    if G_flag == 1:
         G_c = np.copy(G)
     else:
         G_c = None
-    R_est,R_est_J = fastAlignment3D(sym,vol1_ds,vol2_ds,n_ds,Nprojs,trueR,G_c,refrot,verbose);  
-    
-    vol2_ds_c = np.copy(vol2_ds)                             
-    vol2_aligned_ds = fastrotate3d(vol2_ds_c,R_est) # Rotate the original vol_2 back.
-    
-    vol2_ds_c = np.copy(vol2_ds)
-    vol2_aligned_J_ds = fastrotate3d(vol2_ds_c,R_est_J)
+    R_est,R_est_J = fastAlignment3D(sym,vol1_ds.copy(),vol2_ds.copy(),n_ds,Nprojs,trueR,G_c,refrot,verbose);  
+                           
+    vol2_aligned_ds = fastrotate3d(vol2_ds.copy(),R_est) # Rotate the original vol_2 back.
+    vol2_aligned_J_ds = fastrotate3d(vol2_ds.copy(),R_est_J)
     
     vol2_aligned_J_ds = np.flip(vol2_aligned_J_ds, axis=2)    
-    estdx_ds = register_translations_3d(vol1_ds,vol2_aligned_ds)
-    vol2_aligned_ds = reshift_vol(vol2_aligned_ds,estdx_ds)
-    estdx_J_ds = register_translations_3d(vol1_ds,vol2_aligned_J_ds)
-    vol2_aligned_J_ds_s = reshift_vol(vol2_aligned_J_ds,estdx_J_ds)    
-    no1 = np.mean(np.corrcoef(vol1_ds.ravel(),vol2_aligned_ds.ravel()))           
-    no2 = np.mean(np.corrcoef(vol1_ds.ravel(),vol2_aligned_J_ds_s.ravel()))  
-        
+    estdx_ds = register_translations_3d(vol1_ds.copy(),vol2_aligned_ds.copy()).real
+    estdx_J_ds = register_translations_3d(vol1_ds.copy(),vol2_aligned_J_ds.copy()).real
+    if np.size(estdx_ds) != 3 or np.size(estdx_J_ds) != 3:
+        raise Warning("***** Translation estimation failed *****")
+    vol2_aligned_ds = reshift_vol(vol2_aligned_ds,estdx_ds)  
+    vol2_aligned_J_ds = reshift_vol(vol2_aligned_J_ds,estdx_J_ds)    
+    no1 = np.mean(np.corrcoef(vol1_ds.ravel(),vol2_aligned_ds.ravel(),rowvar=False)[0,1:])          
+    no2 = np.mean(np.corrcoef(vol1_ds.ravel(),vol2_aligned_J_ds.ravel(),rowvar=False)[0,1:])  
+    
     if max(no1,no2) < 0.1: # The coorelations of the estimated rotations are 
            # smaller than 0.1, that is, no transformation was recovered. 
            raise Warning("***** Alignment failed *****")
@@ -362,31 +364,28 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
         vol2_ds = np.flip(vol2_ds, axis=2)  
         vol2 = np.flip(vol2, axis=2)   
         reflect = 1
-        if verbose != 0:
-            print('***** Reflection detected *****')
-    if verbose != 0:
-        print('Correlation between downsampled aligned volumes is ',format(corr_v,".3f"))
+        logger.info('***** Reflection detected *****')
+    logger.info('Correlation between downsampled aligned volumes before optimization is %.4f', corr_v)
     # Optimization:
     # We use the BFGS optimization algorithm in order to refine the resulted
     # transformation between the two volumes.    
-    bestR = refine3DmatchBFGS(vol1_ds,vol2_ds,R_est,estdx_ds)
+    bestR = refine3DmatchBFGS(vol1_ds.copy(),vol2_ds.copy(),R_est,estdx_ds)
     bestR = R.as_matrix(bestR)
-    if verbose != 0:
-        print('Done aligning downsampled volumes')
-        print('Applying estimated rotation to original volumes')
-        
-    vol2_c = np.copy(vol2)   
-    vol2aligned = fastrotate3d(vol2_c,bestR)
-    bestdx = register_translations_3d(vol1,vol2aligned)
-    vol2aligned = reshift_vol(vol2aligned,bestdx)    
-    bestcorr = np.mean(np.corrcoef(vol1.ravel(),vol2aligned.ravel()))
-    if verbose != 0:
-        print('Estimated translations: [',format(bestdx[0].real,".3f"), format(bestdx[1].real,".3f"), format(bestdx[2].real,".3f"),']')
-        print('Correlation between original aligned volumes is ', format(bestcorr,".3f"))   
+    logger.info('Done aligning downsampled volumes')
+    logger.info('Applying estimated rotation to original volumes')       
+    vol2aligned = fastrotate3d(vol2.copy(),bestR)
+    bestdx = register_translations_3d(vol1.copy(),vol2aligned.copy())
+    #if np.size(bestdx) != 3 :
+    #    raise Warning("***** Translation estimation failed *****")
+    vol2aligned = reshift_vol(vol2aligned,bestdx)      
+    bestcorr = np.mean(np.corrcoef(vol1.ravel(),vol2aligned.ravel(),rowvar=False)[0,1:])  
+    
+    logger.info('Estimated translations: [%.3f, %.3f, %.3f]',bestdx[0].real, bestdx[1].real, bestdx[2].real)
+    logger.info('Correlation between original aligned volumes is %.4f', bestcorr)  
     # Accurate error calculation:
     # The difference between the estimated and reference rotation should be an
     # element from the symmetry group:
-    if refrot != 0 and er_calc != 0:
+    if refrot == 1 and G_flag == 1:
         n_g = np.size(G,0)
         g_est_t = trueR.T @ bestR.T
         dist = np.zeros((n_g))
@@ -396,37 +395,34 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
         g_est = G[min_idx,:,:]
         err_norm = LA.norm(trueR.T-(g_est @ bestR),ord='fro')     
         ref_true_R = trueR.T
-        if verbose != 0:
-            print('Reference rotation:')
-            print(format(ref_true_R[0,0],".4f"),format(ref_true_R[0,1],".4f"),format(ref_true_R[0,2],".4f"))
-            print(format(ref_true_R[1,0],".4f"),format(ref_true_R[1,1],".4f"),format(ref_true_R[1,2],".4f"))
-            print(format(ref_true_R[2,1],".4f"),format(ref_true_R[2,1],".4f"),format(ref_true_R[2,2],".4f"))
+        logger.info('Reference rotation:')
+        logger.info('%.4f %.4f %.4f', ref_true_R[0,0], ref_true_R[0,1], ref_true_R[0,2])
+        logger.info('%.4f %.4f %.4f', ref_true_R[1,0], ref_true_R[1,1], ref_true_R[1,2])
+        logger.info('%.4f %.4f %.4f', ref_true_R[2,0], ref_true_R[2,1], ref_true_R[2,2])
         aligned_bestR = g_est @ bestR
-        if verbose != 0:
-            print('Estimated rotation (aligned by a symmetry element according to the reference rotation):');
-            print(format(aligned_bestR[0,0],".4f"),format(aligned_bestR[0,1],".4f"),format(aligned_bestR[0,2],".4f"))
-            print(format(aligned_bestR[1,0],".4f"),format(aligned_bestR[1,1],".4f"),format(aligned_bestR[1,2],".4f"))
-            print(format(aligned_bestR[2,0],".4f"),format(aligned_bestR[2,1],".4f"),format(aligned_bestR[2,2],".4f"))    
-            print('Estimated symmetry element:')
-            print(format(g_est[0,0],".4f"),format(g_est[0,1],".4f"),format(g_est[0,2],".4f"))
-            print(format(g_est[1,0],".4f"),format(g_est[1,1],".4f"),format(g_est[1,2],".4f"))
-            print(format(g_est[2,0],".4f"),format(g_est[2,1],".4f"),format(g_est[2,2],".4f")) 
-            print('Estimation error (Frobenius norm) up to symmetry group element is ', format(err_norm,".4f"))
+        logger.info('Estimated rotation (aligned by a symmetry element according to the reference rotation):')
+        logger.info('%.4f %.4f %.4f', aligned_bestR[0,0], aligned_bestR[0,1], aligned_bestR[0,2])
+        logger.info('%.4f %.4f %.4f', aligned_bestR[1,0], aligned_bestR[1,1], aligned_bestR[1,2])
+        logger.info('%.4f %.4f %.4f', aligned_bestR[2,0], aligned_bestR[2,1], aligned_bestR[2,2])
+        logger.info('Estimated symmetry element:')
+        logger.info('%.4f %.4f %.4f', g_est[0,0], g_est[0,1], g_est[0,2])
+        logger.info('%.4f %.4f %.4f', g_est[1,0], g_est[1,1], g_est[1,2])
+        logger.info('%.4f %.4f %.4f', g_est[2,0], g_est[2,1], g_est[2,2])
+        logger.info('Estimation error (Frobenius norm) up to symmetry group element is %.4f', err_norm)
         vec_ref = R.as_rotvec(R.from_matrix(trueR.T))
         angle_ref = LA.norm(vec_ref)
         axis_ref = vec_ref/angle_ref    
         vec_est = R.as_rotvec(R.from_matrix(g_est @ bestR))
         angle_est = LA.norm(vec_est)
         axis_est = vec_est/angle_est  
-        if verbose != 0:
-            print('Rotation axis:')
-            print('Reference [ ',format(axis_ref[0],".4f"),format(axis_ref[1],".4f"),format(axis_ref[2],".4f"),' ]')
-            print('Estimated [ ',format(axis_est[0],".4f"),format(axis_est[1],".4f"),format(axis_est[2],".4f"),' ]')
-            print('Angle between axes is ',format(math.degrees(np.arccos(np.dot(axis_est,axis_ref))),".4f"),' degrees')
-            print('In-plane rotation:')
-            print('Reference ', format(math.degrees(angle_ref),".4f"),' degrees')
-            print('Estimated ', format(math.degrees(angle_est),".4f"), ' degrees')     
-            print('Angle difference is ', format(abs(math.degrees(angle_ref)-math.degrees(angle_est)),".4f"), ' degrees')
+        logger.info('Rotation axis:')
+        logger.info('Reference [ %.4f, %.4f, %.4f]', axis_ref[0], axis_ref[1], axis_ref[2])
+        logger.info('Estimated [ %.4f, %.4f, %.4f]', axis_est[0], axis_est[1], axis_est[2])
+        logger.info('Angle between axes is %.4f  degrees', math.degrees(np.arccos(np.dot(axis_est,axis_ref))))
+        logger.info('In-plane rotation:')
+        logger.info('Reference %.4f degrees', math.degrees(angle_ref))
+        logger.info('Estimated %.4f degrees', math.degrees(angle_est)) 
+        logger.info('Angle difference is %.4f degrees', abs(math.degrees(angle_ref)-math.degrees(angle_est)))
     # Error calculation by optimization:
     # The difference between the estimated and reference rotation should be an
     # element from the symmetry group. In the case the symmetry group of vol1 
@@ -437,7 +433,7 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
     # transformation between the coordinate system of vol1 and the canonical 
     # one. Therefore, the symmetry group can be estimated by evaluating O using
     # optimization algorithm.
-    if refrot != 0 and er_calc == 0:  
+    if refrot == 1 and G_flag == 0 and sym_flag == 1:  
         # Creating initial guess by brute-force algorithm:
         G = genSymGroup(sym)
         n_g = np.size(G,0)
@@ -455,7 +451,6 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
         X0 = np.array([psi, theta, phi]).astype('float64')                
         res = minimize(evalO, X0, args=(trueR.T,bestR,G), method='BFGS', tol=1e-4, options={'gtol':1e-4,'disp':False})
         X = res.x
-        
         psi = X[0]; theta = X[1]; phi = X[2];
         O = R.as_matrix(R.from_euler('xyz', [psi, theta, phi], degrees=False))        
         n_g = np.size(G,0)
@@ -465,37 +460,37 @@ def AlignVolumes(vol1,vol2,verbose=0,opt=None):
             dist[0,i] = LA.norm(trueR.T - (O @ g @ O.T @ bestR),'fro')
         err_norm = np.min(dist); idx = np.array(np.where(dist == err_norm));   
         g = G[idx[1,0],:,:]; g_est = O @ g @ O.T; 
-        ref_true_R = trueR.T;
-        if verbose != 0:
-            print('Reference rotation:')
-            print(format(ref_true_R[0,0],".4f"),format(ref_true_R[0,1],".4f"),format(ref_true_R[0,2],".4f"))
-            print(format(ref_true_R[1,0],".4f"),format(ref_true_R[1,1],".4f"),format(ref_true_R[1,2],".4f"))
-            print(format(ref_true_R[2,1],".4f"),format(ref_true_R[2,1],".4f"),format(ref_true_R[2,2],".4f"))    
+        ref_true_R = trueR.T
+        logger.info('Reference rotation:')
+        logger.info('%.4f %.4f %.4f', ref_true_R[0,0], ref_true_R[0,1], ref_true_R[0,2])
+        logger.info('%.4f %.4f %.4f', ref_true_R[1,0], ref_true_R[1,1], ref_true_R[1,2])
+        logger.info('%.4f %.4f %.4f', ref_true_R[2,0], ref_true_R[2,1], ref_true_R[2,2])
         aligned_bestR = g_est @ bestR
-        if verbose != 0:
-            print('Estimated rotation (aligned by a symmetry element according to the reference rotation):')
-            print(format(aligned_bestR[0,0],".4f"),format(aligned_bestR[0,1],".4f"),format(aligned_bestR[0,2],".4f"))
-            print(format(aligned_bestR[1,0],".4f"),format(aligned_bestR[1,1],".4f"),format(aligned_bestR[1,2],".4f"))
-            print(format(aligned_bestR[2,0],".4f"),format(aligned_bestR[2,1],".4f"),format(aligned_bestR[2,2],".4f"))    
-            print('Estimated symmetry element:')
-            print(format(g_est[0,0],".4f"),format(g_est[0,1],".4f"),format(g_est[0,2],".4f"))
-            print(format(g_est[1,0],".4f"),format(g_est[1,1],".4f"),format(g_est[1,2],".4f"))
-            print(format(g_est[2,0],".4f"),format(g_est[2,1],".4f"),format(g_est[2,2],".4f")) 
-            print('Estimation error (Frobenius norm) up to symmetry group element is ', format(err_norm,".4f"))
+        logger.info('Estimated rotation (aligned by a symmetry element according to the reference rotation):')
+        logger.info('%.4f %.4f %.4f', aligned_bestR[0,0], aligned_bestR[0,1], aligned_bestR[0,2])
+        logger.info('%.4f %.4f %.4f', aligned_bestR[1,0], aligned_bestR[1,1], aligned_bestR[1,2])
+        logger.info('%.4f %.4f %.4f', aligned_bestR[2,0], aligned_bestR[2,1], aligned_bestR[2,2])
+        logger.info('Estimated symmetry element:')
+        logger.info('%.4f %.4f %.4f', g_est[0,0], g_est[0,1], g_est[0,2])
+        logger.info('%.4f %.4f %.4f', g_est[1,0], g_est[1,1], g_est[1,2])
+        logger.info('%.4f %.4f %.4f', g_est[2,0], g_est[2,1], g_est[2,2])
+        logger.info('Estimation error (Frobenius norm) up to symmetry group element is %.4f', err_norm)
         vec_ref = R.as_rotvec(R.from_matrix(trueR.T))
         angle_ref = LA.norm(vec_ref)
         axis_ref = vec_ref/angle_ref    
         vec_est = R.as_rotvec(R.from_matrix(g_est @ bestR))
         angle_est = LA.norm(vec_est)
         axis_est = vec_est/angle_est  
-        if verbose != 0:
-            print('Rotation axis:')
-            print('Reference [ ',format(axis_ref[0],".4f"),format(axis_ref[1],".4f"),format(axis_ref[2],".4f"),' ]')
-            print('Estimated [ ',format(axis_est[0],".4f"),format(axis_est[1],".4f"),format(axis_est[2],".4f"),' ]')
-            print('Angle between axes is ',format(math.degrees(np.arccos(np.dot(axis_est,axis_ref))),".4f"),' degrees')
-            print('In-plane rotation:')
-            print('Reference ', format(math.degrees(angle_ref),".4f"),' degrees')
-            print('Estimated ', format(math.degrees(angle_est),".4f"), ' degrees')     
-            print('Angle difference is ', format(abs(math.degrees(angle_ref)-math.degrees(angle_est)),".4f"), ' degrees')
+        logger.info('Rotation axis:')
+        logger.info('Reference [ %.4f, %.4f, %.4f]', axis_ref[0], axis_ref[1], axis_ref[2])
+        logger.info('Estimated [ %.4f, %.4f, %.4f]', axis_est[0], axis_est[1], axis_est[2])
+        logger.info('Angle between axes is %.4f  degrees', math.degrees(np.arccos(np.dot(axis_est,axis_ref))))
+        logger.info('In-plane rotation:')
+        logger.info('Reference %.4f degrees', math.degrees(angle_ref))
+        logger.info('Estimated %.4f degrees', math.degrees(angle_est)) 
+        logger.info('Angle difference is %.4f degrees', abs(math.degrees(angle_ref)-math.degrees(angle_est)))
+        
+    logging.shutdown()
+        
     return bestR, bestdx, reflect, vol2aligned, bestcorr
 
