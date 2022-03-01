@@ -10,12 +10,12 @@ DEFAULT_N_PROJS = 30
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v1', '--vol1', help='Full path of volume1 mrc input file.')
-    parser.add_argument('-v2', '--vol2', help='Full path of volume1 mrc input file.')
-    parser.add_argument('-o', '--output-vol', help='Full path of mrc output file.', type=check_file_exists)
+    parser.add_argument('-v1', '--vol1', help='Full path of volume1 mrc input file.', type=check_mrc_file_exist)
+    parser.add_argument('-v2', '--vol2', help='Full path of volume1 mrc input file.', type=check_mrc_file_exist)
+    parser.add_argument('-o', '--output-vol', help='Full path of output mrc file.', type=check_mrc_file_not_exist)
     parser.add_argument('--downsample', help='Use to set downsample size', default=DEFAULT_DOWNSAMPLE, type=check_positive_int)
     parser.add_argument('--n-projs', help='Use to set number of projections', default=DEFAULT_N_PROJS, type=check_positive_int)
-    parser.add_argument('--output-parameters', help='Full path of txt output file for parameters.', default=None, type=check_file_exists)
+    parser.add_argument('--output-parameters', help='Full path of output txt file for parameters.', default=None, type=check_txt_file_not_exist)
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Verbose. Choose this to display outputs during runtime.', default=False)
 
@@ -33,14 +33,35 @@ def check_positive_int(value):
     return ivalue
 
 
+def check_mrc_file_exist(output_file):
+    if not os.path.isfile(output_file):
+        raise argparse.ArgumentTypeError("There is no file with the name %s." % output_file)
+    if output_file[-4:] != '.mrc':
+        raise argparse.ArgumentTypeError('%s is not an mrc file.' % output_file)
+    return output_file
 
-def check_file_exists(output_file):
+
+def check_mrc_file_not_exist(output_file):
     if os.path.isfile(output_file):
         raise argparse.ArgumentTypeError("There is already a file with the name %s." % output_file)
     output_dir, _ = os.path.split(output_file)
     if not os.path.isdir(output_dir):
         raise argparse.ArgumentTypeError(
-            'Directory %s does not exist. Please specify an existing directory.' % output_dir)
+            'Directory %s does not exist. Please specify a file in existing directory.' % output_dir)
+    if output_file[-4:] != '.mrc':
+        raise argparse.ArgumentTypeError('%s is not an mrc file.' % output_file)
+    return output_file
+
+
+def check_txt_file_not_exist(output_file):
+    if os.path.isfile(output_file):
+        raise argparse.ArgumentTypeError("There is already a file with the name %s." % output_file)
+    output_dir, _ = os.path.split(output_file)
+    if not os.path.isdir(output_dir):
+        raise argparse.ArgumentTypeError(
+            'Directory %s does not exist. Please specify a file in existing directory.' % output_dir)
+    if output_file[-4:] != '.txt':
+        raise argparse.ArgumentTypeError('%s is not an txt file.' % output_file)
     return output_file
 
 

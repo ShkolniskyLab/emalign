@@ -3,7 +3,6 @@ from sys import exit, argv
 from src.emalign_input import check_for_newer_version, get_args, parse_args
 from src.AlignVolumes3d import AlignVolumes
 from src.read_write import read_mrc, write_mrc
-from src.common_finufft import cryo_downsample
 
 warnings.filterwarnings("ignore")
 
