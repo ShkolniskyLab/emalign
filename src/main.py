@@ -2,7 +2,9 @@ import warnings
 from sys import exit, argv
 from src.emalign_input import check_for_newer_version, get_args, parse_args
 from src.AlignVolumes3d import AlignVolumes
-from src.read_write import read_mrc, write_mrc
+from src.read_write import read_mrc
+import mrcfile
+from src.common_finufft import cryo_downsample
 
 warnings.filterwarnings("ignore")
 
@@ -44,7 +46,7 @@ def main():
     # n1 = vol1.shape[0]
     # n2 = vol2.shape[0]
     # if n1 < n2:
-    #     vol2 = cryo_downsample(vol2,(n1, n1, n1))
+    #     vol2 = cryo_downsample(vol2, (n1, n1, n1))
     # elif n2 < n1:
     #     vol1 = cryo_downsample(vol1, (n2, n2, n2))
 
@@ -60,7 +62,9 @@ def main():
     bestR, bestdx, reflect, vol2aligned, bestcorr = AlignVolumes(vol1, vol2, args.verbose, opt)
 
     # Save
-    write_mrc(args.output_vol, vol2aligned)
+    with mrcfile.new(args.output_vol, overwrite=True) as mrc_fh:
+        mrc_fh.set_data(vol2aligned.astype('float32').T)
+        mrc_fh.voxel_size = 3
 
     # Save parameters
     if args.output_parameters is not None:
