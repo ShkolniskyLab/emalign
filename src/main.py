@@ -5,6 +5,8 @@ from src.AlignVolumes3d import AlignVolumes
 from src.read_write import read_mrc
 import mrcfile
 from src.common_finufft import cryo_downsample
+import os
+import shutil
 
 warnings.filterwarnings("ignore")
 
@@ -62,9 +64,19 @@ def main():
     bestR, bestdx, reflect, vol2aligned, bestcorr = AlignVolumes(vol1, vol2, args.verbose, opt)
 
     # Save
-    with mrcfile.new(args.output_vol, overwrite=True) as mrc_fh:
-        mrc_fh.set_data(vol2aligned.astype('float32').T)
-        mrc_fh.voxel_size = 3
+    # Copy vol2 first
+    destination, out_name = os.path.split(args.output_vol)
+    shutil.copy(args.vol2, destination)
+
+    # Rename file
+    _, input_name = os.path.split(args.vol2)
+    os.rename(destination + input_name, destination + out_name)
+
+    # Change and save
+    mrc_fh = mrcfile.open(args.output_vol)
+    mrc_fh.set_data(vol2aligned.astype('float32').T)
+    mrc_fh.update_header_stats()
+    mrc_fh.close()
 
     # Save parameters
     if args.output_parameters is not None:
