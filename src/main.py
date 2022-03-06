@@ -2,7 +2,7 @@ import warnings
 from sys import exit, argv
 from src.emalign_input import check_for_newer_version, get_args, parse_args
 from src.AlignVolumes3d import AlignVolumes
-from src.read_write import read_mrc
+from src.read_write import read_mrc, copy_and_rename
 import mrcfile
 from src.common_finufft import cryo_downsample
 import os
@@ -64,13 +64,8 @@ def main():
     bestR, bestdx, reflect, vol2aligned, bestcorr = AlignVolumes(vol1, vol2, args.verbose, opt)
 
     # Save
-    # Copy vol2 first
-    destination, out_name = os.path.split(args.output_vol)
-    shutil.copy(args.vol2, destination)
-
-    # Rename file
-    _, input_name = os.path.split(args.vol2)
-    os.rename(os.path.join(destination, input_name), os.path.join(destination, out_name))
+    # Copy vol2 to save header
+    copy_and_rename(args.vol2, args.output_vol)
 
     # Change and save
     mrc_fh = mrcfile.open(args.output_vol, mode='r+')
