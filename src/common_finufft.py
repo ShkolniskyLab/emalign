@@ -38,8 +38,9 @@ def cryo_pft(p, n_r, n_theta):
     # finufftpy require it to be aligned in fortran order
     pf = np.empty((n_r * n_theta // 2, n_projs), dtype='complex128', order='F')
     #finufftpy.nufft2d2many(freqs[0], freqs[1], pf, 1, 1e-15, p)
+    p_complex = p.astype('complex128')
     for i in range(n_projs):
-        pf[:,i] = finufft.nufft2d2(freqs[0], freqs[1], p[:,:,i])
+        pf[:,i] = finufft.nufft2d2(freqs[0], freqs[1], p_complex[:,:,i])
     pf = pf.reshape((n_r, n_theta // 2, n_projs), order='F')
     pf = np.concatenate((pf.conj(), pf), axis=1).copy()
     return pf, freqs

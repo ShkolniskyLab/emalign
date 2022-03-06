@@ -70,10 +70,10 @@ def main():
 
     # Rename file
     _, input_name = os.path.split(args.vol2)
-    os.rename(destination + input_name, destination + out_name)
+    os.rename(os.path.join(destination, input_name), os.path.join(destination, out_name))
 
     # Change and save
-    mrc_fh = mrcfile.open(args.output_vol)
+    mrc_fh = mrcfile.open(args.output_vol, mode='r+')
     mrc_fh.set_data(vol2aligned.astype('float32').T)
     mrc_fh.update_header_stats()
     mrc_fh.close()
