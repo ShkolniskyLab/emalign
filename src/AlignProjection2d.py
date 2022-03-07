@@ -18,11 +18,10 @@ import math
 import cmath
 import logging
 
-from dev_utils import mat_to_npy
-from cryo_project_itay_finufft import cryo_project
-from common_finufft import cryo_pft
-from commonline_R2 import commonline_R2, cryo_normalize
-from genRotationsGrid import genRotationsGrid
+from src.cryo_project_itay_finufft import cryo_project
+from src.common_finufft import cryo_pft
+from src.commonline_R2 import commonline_R2, cryo_normalize
+from src.genRotationsGrid import genRotationsGrid
 from numpy import linalg as LA
 
 
