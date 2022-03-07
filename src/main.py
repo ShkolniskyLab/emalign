@@ -80,5 +80,3 @@ def main():
                  'estimated translation:\t{}'.format(bestdx), 'rotation:\n{}'.format(bestR)]
         with open(args.output_parameters, 'w') as f:
             f.writelines('\n'.join(lines))
-
-main()
