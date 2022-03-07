@@ -70,6 +70,7 @@ def main():
     # Change and save
     mrc_fh = mrcfile.open(args.output_vol, mode='r+')
     mrc_fh.set_data(vol2aligned.astype('float32').T)
+    mrc_fh.set_volume()
     mrc_fh.update_header_stats()
     mrc_fh.close()
 
@@ -79,3 +80,5 @@ def main():
                  'estimated translation:\t{}'.format(bestdx), 'rotation:\n{}'.format(bestR)]
         with open(args.output_parameters, 'w') as f:
             f.writelines('\n'.join(lines))
+
+main()
