@@ -18,6 +18,7 @@ The package has been tested on Ubuntu 18.04 and Windows 10. It should probably w
 
 * The package makes use of the pyfftw package, which in turn uses the FFTW library. Before installing emalign make sure you have the FFTW library installed on your system: http://www.fftw.org/fftw3_doc/Installation-and-Customization.html#Installation-and-Customization
 
+
 <h2>Install emalign</h2>
 <h3>Install emalign via pip:</h3>
 We recommend installing emalign via pip:
@@ -55,3 +56,15 @@ Just use pip with -U option:
 
 <h2>Getting started:</h2>
 Please read the user manual for usage instructions, available at the homepage of the project on Github: https://github.com/ShkolniskyLab/emalign
+
+
+<h2>Usage:</h2>
+Generate test data via: 
+
+
+    $ vol1, vol2 = gentestdata(emdID) %emdID is an integer describing a map file from EMDB. 
+
+Run the alignment algorithm via:
+
+
+    $ vol2aligned, bestcorr = emalign(vol1, vol2, 1) %bestcorr is the correlation between vol1 and vol2aligned.
