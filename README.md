@@ -62,9 +62,11 @@ Please read the user manual for usage instructions, available at the homepage of
 Generate test data via: 
 
 
-    $ vol1, vol2 = gentestdata(emdID) %emdID is an integer describing a map file from EMDB. 
+    $ vol1, vol2 = gentestdata(emdID) #emdID is an integer describing a map file from EMDB. 
 
 Run the alignment algorithm via:
 
 
-    $ vol2aligned, bestcorr = emalign(vol1, vol2, 1) %bestcorr is the correlation between vol1 and vol2aligned.
+    $ vol2aligned = emalign(vol1, vol2) 
+    
+Verify the result by calculating, for example, the correlation between vol1 and vol2aligned.
