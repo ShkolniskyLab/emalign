@@ -1,12 +1,14 @@
+import shutil
 import warnings
 from sys import exit, argv
 from src.emalign_input import check_for_newer_version, get_args, parse_args
 from src.AlignVolumes3d import AlignVolumes
 from src.read_write import read_mrc, copy_and_rename
+from src.gentestdata import gentestdata
 import mrcfile
-from src.common_finufft import cryo_downsample
-import os
-import shutil
+#from src.common_finufft import cryo_downsample
+#import os
+#import shutil
 
 warnings.filterwarnings("ignore")
 
@@ -25,6 +27,17 @@ def main():
             version = pkg_resources.require('EMalign')[0].version
             print('EMalign {}'.format(version))
             exit()
+            
+        if args.make_test_data:
+            emdID = 2660
+            ref_mrc_filename = "map_ref_{0}.mrc".format(emdID)
+            transformed_mrc_filename = "map_transformed_{0}.mrc".format(emdID)
+            print("Generating test data...")
+            gentestdata(ref_mrc_filename, transformed_mrc_filename, emdID, args.verbose)
+            print("Test volume saved to " + ref_mrc_filename)
+            print("Transform volume saved to "+ transformed_mrc_filename)
+            exit()
+            
         if args.vol1 is None or args.vol2 is None or args.output_vol is None:
             print(
                 "Error: one or more of the following arguments are missing: vol1, vol2, output-vol. For help run kltpicker -h")
@@ -65,7 +78,7 @@ def main():
 
     # Save
     # Copy vol2 to save header
-    copy_and_rename(args.vol2, args.output_vol)
+    shutil.copyfile(args.vol2, args.output_vol)
 
     # Change and save
     mrc_fh = mrcfile.open(args.output_vol, mode='r+')

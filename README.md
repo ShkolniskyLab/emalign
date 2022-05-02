@@ -58,15 +58,28 @@ Just use pip with -U option:
 Please read the user manual for usage instructions, available at the homepage of the project on Github: https://github.com/ShkolniskyLab/emalign
 
 
-<h2>Usage:</h2>
-Generate test data via: 
+<h2>Basic usage:</h2>
+Generate test data via
+
+    $ emalign --make-test-data -v
+
+This will download EMD-2660 from EMDB (https://www.ebi.ac.uk/emdb/), downsample it to size 129 pixels (with pixel size 
+3.74A), and save the downsampled map into map_ref_2660.mrc. The function then rotates and shifts the map (see log messages 
+for the exact transformation parameters) and saves the transformed map to map_transformed_2660.mrc. These two maps can
+be used to test the alignment algorithm.
+
+Run the alignment algorithm via
+
+    $  emalign -v1 ./map_ref_2660.mrc -v2 ./map_transformed_2660.mrc -o ./map_aligned_2660.mrc -v
+
+The algorithm will align v2 to v1, saving the aligned map. 
+
+Type
+
+```   
+$  emalign -h 
+```
+
+for help.
 
 
-    $ vol1, vol2 = gentestdata(emdID) #emdID is an integer describing a map file from EMDB. 
-
-Run the alignment algorithm via:
-
-
-    $ vol2aligned = emalign(vol1, vol2) 
-    
-Verify the result by calculating, for example, the correlation between vol1 and vol2aligned.

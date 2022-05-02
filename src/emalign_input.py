@@ -10,17 +10,25 @@ DEFAULT_N_PROJS = 30
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v1', '--vol1', help='Full path of volume1 mrc input file.', type=check_mrc_file_exist)
-    parser.add_argument('-v2', '--vol2', help='Full path of volume1 mrc input file.', type=check_mrc_file_exist)
-    parser.add_argument('-o', '--output-vol', help='Full path of output mrc file.', type=check_mrc_file_not_exist)
-    parser.add_argument('--downsample', help='Use to set downsample size', default=DEFAULT_DOWNSAMPLE, type=check_positive_int)
-    parser.add_argument('--n-projs', help='Use to set number of projections', default=DEFAULT_N_PROJS, type=check_positive_int)
-    parser.add_argument('--output-parameters', help='Full path of output txt file for parameters.', default=None, type=check_txt_file_not_exist)
+    parser.add_argument('-v1', '--vol1', help='Full path of first mrc input file', type=check_mrc_file_exist)
+    parser.add_argument('-v2', '--vol2', help='Full path of second mrc input file', type=check_mrc_file_exist)
+    parser.add_argument('-o', '--output-vol', help='Full path of output mrc file', type=check_mrc_file_not_exist)
+    parser.add_argument('--downsample', help='Dimension to downsample input volumes', default=DEFAULT_DOWNSAMPLE,
+                        type=check_positive_int)
+    parser.add_argument('--n-projs', help='Number of projections', default=DEFAULT_N_PROJS,
+                        type=check_positive_int)
+    parser.add_argument('--output-parameters', help='Full path of output txt file for alignment parameters', default=None,
+                        type=check_txt_file_not_exist)
     parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Verbose. Choose this to display outputs during runtime.', default=False)
+                        help='Print progress messages', default=False)
+
+    # Make emalign to generate two volumes, which can be used to test the 
+    # alignment algorithm.
+    parser.add_argument('--make-test-data', help='Generate test volumes to test emalign', action='store_true',
+                        default=False)
 
     # Version
-    parser.add_argument('--version', help='Check version', action='store_true', default=False)
+    parser.add_argument('--version', help='print program version and exit', action='store_true', default=False)
 
     args = parser.parse_args()
     return args
@@ -66,7 +74,7 @@ def check_txt_file_not_exist(output_file):
 
 
 def get_args():
-    print("\n")
+    # print("\n")
     while True:
         vol1 = input('Enter full path of reference volume MRC file: ')
         if vol1[-4:] != '.mrc':
@@ -96,7 +104,8 @@ def get_args():
         if os.path.isfile(output_vol):
             break_flag = False
             while True:
-                replace = input('There is already a file with the name {}. Do you want to replace it [y/n]?: '. format(output_vol))
+                replace = input(
+                    'There is already a file with the name {}. Do you want to replace it [y/n]?: '.format(output_vol))
                 if replace.lower().startswith('y'):
                     break_flag = True
                     break
@@ -122,11 +131,11 @@ def get_args():
 
     while True:
         n_projs = input('Enter the number of projections (default {}): '.format(DEFAULT_N_PROJS))
-        if n_projs== '':
-            n_projs= DEFAULT_N_PROJS
+        if n_projs == '':
+            n_projs = DEFAULT_N_PROJS
             break
         try:
-            n_projs= int(n_projs)
+            n_projs = int(n_projs)
             if n_projs < 1:
                 print("Number of projections must be a positive integer.")
             else:
@@ -200,4 +209,4 @@ def check_for_newer_version():
         if latest_version != current_version:
             print(
                 "NOTE: you are running an old version of %s (%s). A newer version (%s) is available, please upgrade." % (
-                name, current_version, latest_version))
+                    name, current_version, latest_version))
