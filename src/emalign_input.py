@@ -53,7 +53,7 @@ def check_mrc_file_not_exist(output_file):
     if os.path.isfile(output_file):
         raise argparse.ArgumentTypeError("There is already a file with the name %s." % output_file)
     output_dir, _ = os.path.split(output_file)
-    if output_dir == "":    # No directory specified. Use current directory.
+    if output_dir == "":    # No directory not specified. Use current directory.
         output_dir = "."
         output_file = os.path.join(output_dir, output_file)
     if not os.path.isdir(output_dir):
@@ -68,6 +68,9 @@ def check_txt_file_not_exist(output_file):
     if os.path.isfile(output_file):
         raise argparse.ArgumentTypeError("There is already a file with the name %s." % output_file)
     output_dir, _ = os.path.split(output_file)
+    if output_dir == "":    # No directory not specified. Use current directory.
+        output_dir = "."
+        output_file = os.path.join(output_dir, output_file)
     if not os.path.isdir(output_dir):
         raise argparse.ArgumentTypeError(
             'Directory %s does not exist. Please specify a file in existing directory.' % output_dir)
