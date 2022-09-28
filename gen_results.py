@@ -41,7 +41,9 @@ test_densities = [
     ['I',   '24494',    2.27]
 ]
 
-working_dir = './data'
+working_dir = "./data"
+
+emalign_cmd = "/home/yoelsh/.local/bin/emalign"
 
 # Setup logger
 logging.basicConfig(level=logging.DEBUG,
@@ -244,7 +246,7 @@ def download_data(working_dir):
 
             logger.info('Downloading %d/%d %s  (EMD%s)',testidx+1,len(test_densities),symmetry,emdid)
             
-            fnames_dict = get_test_filenames(emdid,working_dir)
+            fnames_dict = get_test_filenames(working_dir,emdid)
             map_name = fnames_dict['ref']            
             src.cryo_fetch_emdID.cryo_fetch_emdID(emdid,map_name)
 
@@ -347,7 +349,7 @@ def run_cmd(cmd):
     #subprocess.run(align_cmd)  
     
     # Run with printouts
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
     # Grab stdout line by line as it becomes available.  
     # This will loop until p terminates.
     while p.poll() is None:
@@ -364,125 +366,129 @@ def run_cmd(cmd):
 def results_varying_N():
     init_random_state()
     
-    sz_ds = 64 # Size of downsampled volume
     
-    results = []
-    
-    for testidx in range(len(test_densities)):
-                          
-        #Generate two density maps
-    
-        test_data = test_densities[testidx]
-        symmetry = test_data[0]
-        emdid = test_data[1]        
-        fnames_dict = get_test_filenames(working_dir, emdid)
-
-        logger.info('Test %d/%d %s  (EMD%s)',testidx+1,len(test_densities),symmetry,emdid)
+    results = []    
+    sizes = [16, 32, 64, 128]  # Sizes of downsampled volumes
         
-        vol = src.read_write.read_mrc(fnames_dict['ref'])
-        sz_orig = vol.shape[0]  # Size of original volume (before downsampling)
-        vol = src.common_finufft.cryo_downsample(vol,[sz_ds,sz_ds,sz_ds])
-
-        # Generate a random rotation
-        R = np.squeeze(src.rand_rots.rand_rots(1))
-        assert abs(np.linalg.det(R)-1) <1.0e-8
-
-        # Rotate the reference volume by the random rotation
-        volRotated1 = src.fastrotate3d.fastrotate3d(vol,R)
+    for sz_ds in sizes:
+    #sz_ds = 64 # Size of downsampled volume
+    
+        for testidx in range(len(test_densities)):
+                              
+            #Generate two density maps
         
-        # Add shift
-        # volRotated1 = src.reshift_vol.reshift_vol(volRotated1,[-5, 0, 0])
-
-        try:
+            test_data = test_densities[testidx]
+            symmetry = test_data[0]
+            emdid = test_data[1]        
+            fnames_dict = get_test_filenames(working_dir, emdid)
+    
+            logger.info('Test %d/%d %s  (EMD%s)',testidx+1,len(test_densities),symmetry,emdid)
             
-            # Save the two volues to align
-            vol_ref_name = str(uuid.uuid4())+'.mrc'
-            vol_ref_name = os.path.join(working_dir, vol_ref_name)
-            src.read_write.write_mrc(vol_ref_name, vol)
-
-            vol_rot_name = str(uuid.uuid4())+'.mrc'
-            vol_rot_name = os.path.join(working_dir, vol_rot_name)
-            src.read_write.write_mrc(vol_rot_name, volRotated1)
+            vol = src.read_write.read_mrc(fnames_dict['ref'])
+            sz_orig = vol.shape[0]  # Size of original volume (before downsampling)
+            vol = src.common_finufft.cryo_downsample(vol,[sz_ds,sz_ds,sz_ds])
+    
+            # Generate a random rotation
+            R = np.squeeze(src.rand_rots.rand_rots(1))
+            assert abs(np.linalg.det(R)-1) <1.0e-8
+    
+            # Rotate the reference volume by the random rotation
+            volRotated1 = src.fastrotate3d.fastrotate3d(vol,R)
             
-            vol_aligned_norefine_name = str(uuid.uuid4())+'.mrc'
-            vol_aligned_norefine_name = os.path.join(working_dir,\
-                                                     vol_aligned_norefine_name)
-
-            vol_aligned_refine_name = str(uuid.uuid4())+'.mrc'
-            vol_aligned_refine_name = os.path.join(working_dir,\
-                                                     vol_aligned_refine_name)
-
-            params_norefine_name = str(uuid.uuid4())+'.txt'
-            params_refine_name = str(uuid.uuid4())+'.txt'
-            
-            
-            ####
-            # Run alignment without refiment
-            ####
-            align_cmd = ('emalign --vol1 {0:s} --vol2 {1:s} '+
-            '--output-vol {2:s} --downsample {3:d} '+
-            '--output-parameters {4:s} --no-refine '+
-            '--verbose').format(vol_ref_name, vol_rot_name,
-                                vol_aligned_norefine_name, sz_ds, 
-                                params_norefine_name)                         
-            
-            # Run alignment command
-            t_norefine = run_cmd(align_cmd)
-
-            # Read estimated matrix from paramters file
-            Rest = rot_from_params_file(params_norefine_name)
-            Rest = Rest.transpose()
-            
-            # Calculate error between ground-truth and estimated rotation
-            err_ang1_norefine, err_ang2_norefine = measure_error(R, Rest, symmetry)
-
-
-            ####
-            # Run alignment with refiment
-            ####
-            align_cmd = ('emalign --vol1 {0:s} --vol2 {1:s} '+
-            '--output-vol {2:s} --downsample {3:d} '+
-            '--output-parameters {4:s}  '+
-            '--verbose').format(vol_ref_name, vol_rot_name, 
-                                vol_aligned_refine_name, sz_ds, 
-                                params_refine_name)                         
-            
-            # Run alignment command
-            t_refine = run_cmd(align_cmd)
-
-            # Read estimated matrix from paramters file
-            Rest = rot_from_params_file(params_refine_name)
-            Rest = Rest.transpose()
-            
-            # Calculate error between ground-truth and estimated rotation
-            err_ang1_refine, err_ang2_refine = measure_error(R, Rest, symmetry)
-
+            # Add shift
+            # volRotated1 = src.reshift_vol.reshift_vol(volRotated1,[-5, 0, 0])
+    
+            try:
                 
-            test_result = [symmetry, emdid, sz_orig, sz_ds,
-                           err_ang1_norefine, err_ang2_norefine, t_norefine,
-                               err_ang1_refine, err_ang2_refine, t_refine]
+                # Save the two volues to align
+                vol_ref_name = str(uuid.uuid4())+'.mrc'
+                vol_ref_name = os.path.join(working_dir, vol_ref_name)
+                src.read_write.write_mrc(vol_ref_name, vol)
+    
+                vol_rot_name = str(uuid.uuid4())+'.mrc'
+                vol_rot_name = os.path.join(working_dir, vol_rot_name)
+                src.read_write.write_mrc(vol_rot_name, volRotated1)
                 
-            print(test_result)
-            results.append(test_result)
-        # Cleanup
-        finally:
-            if os.path.exists(vol_ref_name):
-                os.remove(vol_ref_name)
+                vol_aligned_norefine_name = str(uuid.uuid4())+'.mrc'
+                vol_aligned_norefine_name = os.path.join(working_dir,\
+                                                         vol_aligned_norefine_name)
+    
+                vol_aligned_refine_name = str(uuid.uuid4())+'.mrc'
+                vol_aligned_refine_name = os.path.join(working_dir,\
+                                                         vol_aligned_refine_name)
+    
+                params_norefine_name = str(uuid.uuid4())+'.txt'
+                params_refine_name = str(uuid.uuid4())+'.txt'
                 
-            if os.path.exists(vol_rot_name):
-                os.remove(vol_rot_name)
-                        
-            if os.path.exists(vol_aligned_norefine_name):
-                os.remove(vol_aligned_norefine_name)
-
-            if os.path.exists(vol_aligned_refine_name):
-                os.remove(vol_aligned_refine_name)
-
-            if os.path.exists(params_norefine_name):
-                os.remove(params_norefine_name)
-
-            if os.path.exists(params_refine_name):
-                os.remove(params_refine_name)
+                
+                ####
+                # Run alignment without refiment
+                ####
+                align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
+                '--output-vol {2:s} --downsample {3:d} '+
+                '--output-parameters {4:s} --no-refine '+
+                '--verbose').format(vol_ref_name, vol_rot_name,
+                                    vol_aligned_norefine_name, sz_ds, 
+                                    params_norefine_name)                         
+           
+                                    
+                # Run alignment command
+                t_norefine = run_cmd(align_cmd)
+    
+                # Read estimated matrix from paramters file
+                Rest = rot_from_params_file(params_norefine_name)
+                Rest = Rest.transpose()
+                
+                # Calculate error between ground-truth and estimated rotation
+                err_ang1_norefine, err_ang2_norefine = measure_error(R, Rest, symmetry)
+    
+    
+                ####
+                # Run alignment with refiment
+                ####
+                align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
+                '--output-vol {2:s} --downsample {3:d} '+
+                '--output-parameters {4:s}  '+
+                '--verbose').format(vol_ref_name, vol_rot_name, 
+                                    vol_aligned_refine_name, sz_ds, 
+                                    params_refine_name)                                
+                
+                # Run alignment command
+                t_refine = run_cmd(align_cmd)
+    
+                # Read estimated matrix from paramters file
+                Rest = rot_from_params_file(params_refine_name)
+                Rest = Rest.transpose()
+                
+                # Calculate error between ground-truth and estimated rotation
+                err_ang1_refine, err_ang2_refine = measure_error(R, Rest, symmetry)
+    
+                    
+                test_result = [symmetry, emdid, sz_orig, sz_ds,
+                               err_ang1_norefine, err_ang2_norefine, t_norefine,
+                                   err_ang1_refine, err_ang2_refine, t_refine]
+                    
+                print(test_result)
+                results.append(test_result)
+            # Cleanup
+            finally:
+                if os.path.exists(vol_ref_name):
+                    os.remove(vol_ref_name)
+                    
+                if os.path.exists(vol_rot_name):
+                    os.remove(vol_rot_name)
+                            
+                if os.path.exists(vol_aligned_norefine_name):
+                    os.remove(vol_aligned_norefine_name)
+    
+                if os.path.exists(vol_aligned_refine_name):
+                    os.remove(vol_aligned_refine_name)
+    
+                if os.path.exists(params_norefine_name):
+                    os.remove(params_norefine_name)
+    
+                if os.path.exists(params_refine_name):
+                    os.remove(params_refine_name)
 
     return results
 
