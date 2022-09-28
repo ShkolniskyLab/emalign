@@ -368,7 +368,7 @@ def results_varying_N():
     
     
     results = []    
-    sizes = [16, 32, 64, 128]  # Sizes of downsampled volumes
+    sizes = [16, 32]  # Sizes of downsampled volumes
         
     for sz_ds in sizes:
     #sz_ds = 64 # Size of downsampled volume

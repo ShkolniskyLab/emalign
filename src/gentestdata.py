@@ -52,7 +52,7 @@ def gentestdata(ref_mrc_filename,transformed_mrc_filename,emdID=2660,verbose=1):
     logger.info('Generating a rotated and shifted volume')
     R_true = rand_rots(1).reshape((3,3))
     vol_rotated = fastrotate3d(vol.copy(), R_true)
-    shift = np.array([-5, 3 ,0])
+    shift = np.array([-10, 1 ,10])
     vol_rotated = reshift_vol(vol_rotated.copy(), shift)
     
     logger.info('Ground truth rotation:')
