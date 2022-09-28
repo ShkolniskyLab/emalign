@@ -1,3 +1,8 @@
+"""
+Created on Sun Sep 25 21:49:00 2022
+
+@author: yoel shkolnisky
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.interpolate as interp
