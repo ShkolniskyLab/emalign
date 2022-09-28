@@ -9,7 +9,7 @@ Created on Wed May 26 11:11:19 2021
 import numpy as np
 import math
 import cmath
-from scipy.spatial.transform import Rotation as R
+import scipy.spatial.transform
 from numpy.fft import fft, ifft
 
 #%%
@@ -24,8 +24,8 @@ def fastrotate3d(vol,Rot):
     #   Rot=rand_rots(1);
     #   rvol=fastrotate3d(vol,Rot);
     #Yoel Shkolnisky, November 2013.
-    Rot = R.from_matrix(Rot)
-    [psi,theta,phi]  = Rot.as_euler('xyz')
+    Rot_obj = scipy.spatial.transform.Rotation.from_matrix(Rot)
+    [psi,theta,phi]  = Rot_obj.as_euler('xyz')
 
     psid = psi*180/np.pi
     thetad = theta*180/np.pi 
@@ -113,7 +113,7 @@ def fastrotateprecomp(SzX,SzY,phi):
     return M
 
 #%%
-def fastrotate(vol,phi,M=[]):
+def fastrotate(vol,phi,M=None):
     # 3-step image rotation by shearing.
     # This is an optimized version of fastrotate_ref.
     # 
@@ -204,7 +204,7 @@ def fastrotate3x(vol,phi):
     M = fastrotateprecomp(SzY,SzZ,phi)    
     vol_out = np.zeros((SzX,SzY,SzZ),dtype=float)
     for k in range(SzX):
-        im = np.squeeze(vol[:,k,:]).reshape((SzX,SzZ,1))
+        im = (np.squeeze(vol[:,k,:]).reshape((SzX,SzZ,1))).copy()
         rim = fastrotate(im,[],M)
         vol_out[:,k,:] = rim.reshape((SzX,SzZ))
     return vol_out
@@ -232,7 +232,7 @@ def fastrotate3y(vol,phi):
     M = fastrotateprecomp(SzX,SzY,-phi)    
     vol_out = np.zeros((SzX,SzY,SzZ),dtype=float)
     for k in range(SzY):
-        im = np.squeeze(vol[k,:,:]).reshape((SzY,SzZ,1))
+        im = (np.squeeze(vol[k,:,:]).reshape((SzY,SzZ,1))).copy()
         rim = fastrotate(im,[],M)
         vol_out[k,:,:] = rim.reshape((SzY,SzZ))
     return vol_out
@@ -260,7 +260,19 @@ def fastrotate3z(vol,phi):
     M = fastrotateprecomp(SzX,SzY,-phi)    
     vol_out = np.zeros((SzX,SzY,SzZ),dtype=float)
     for k in range(SzZ):
-        im = np.squeeze(vol[:,:,k]).reshape((SzX,SzY,1))
+        im = (np.squeeze(vol[:,:,k]).reshape((SzX,SzY,1))).copy()
         rim = fastrotate(im,[],M)
         vol_out[:,:,k] = rim.reshape((SzX,SzY))
     return vol_out
+
+#import scipy.io as matio
+#mat_vars = matio.loadmat("../mattemp.mat")
+#vol = mat_vars["vol"]
+#R = mat_vars["R"]
+#vol_rot = fastrotate3d(vol, R)
+#print(np.linalg.norm(vol_rot - mat_vars["vol_rot"])/np.linalg.norm(vol_rot))
+#vol_rot = fastrotate3d(vol, R)
+#print(np.linalg.norm(vol_rot - mat_vars["vol_rot"])/np.linalg.norm(vol_rot))
+#vol2 = fastrotate3d(vol_rot,R.transpose())
+#np.corrcoef(vol2.ravel(),vol.ravel())
+#aaa = 1
