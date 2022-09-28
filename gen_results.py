@@ -368,13 +368,14 @@ def results_varying_N():
     
     
     results = []    
-    sizes = [16, 32]  # Sizes of downsampled volumes
+    sizes = [16, 32, 64, 128]  # Sizes of downsampled volumes
         
     for sz_ds in sizes:
-    #sz_ds = 64 # Size of downsampled volume
+        
+        #sz_ds = 64 # Size of downsampled volume
     
         for testidx in range(len(test_densities)):
-                              
+        
             #Generate two density maps
         
             test_data = test_densities[testidx]
@@ -382,11 +383,17 @@ def results_varying_N():
             emdid = test_data[1]        
             fnames_dict = get_test_filenames(working_dir, emdid)
     
-            logger.info('Test %d/%d %s  (EMD%s)',testidx+1,len(test_densities),symmetry,emdid)
+            logger.info('Test %d/%d %s  (EMD%s)',testidx+1,
+                        len(test_densities),symmetry,emdid)
             
-            vol = src.read_write.read_mrc(fnames_dict['ref'])
+            vol = src.read_write.read_mrc(fnames_dict['ref'])            
             sz_orig = vol.shape[0]  # Size of original volume (before downsampling)
-            vol = src.common_finufft.cryo_downsample(vol,[sz_ds,sz_ds,sz_ds])
+                                    
+            if sz_orig > sz_ds: # Check if need to downsample
+                vol = src.common_finufft.cryo_downsample(vol,
+                                                         [sz_ds,sz_ds,sz_ds])
+            else:
+                sz_ds = sz_orig            
     
             # Generate a random rotation
             R = np.squeeze(src.rand_rots.rand_rots(1))
@@ -440,7 +447,8 @@ def results_varying_N():
                 Rest = Rest.transpose()
                 
                 # Calculate error between ground-truth and estimated rotation
-                err_ang1_norefine, err_ang2_norefine = measure_error(R, Rest, symmetry)
+                err_ang1_norefine, err_ang2_norefine = measure_error(R, Rest, 
+                                                                     symmetry)
     
     
                 ####
@@ -461,12 +469,14 @@ def results_varying_N():
                 Rest = Rest.transpose()
                 
                 # Calculate error between ground-truth and estimated rotation
-                err_ang1_refine, err_ang2_refine = measure_error(R, Rest, symmetry)
+                err_ang1_refine, err_ang2_refine = measure_error(R, Rest, 
+                                                                 symmetry)
     
                     
                 test_result = [symmetry, emdid, sz_orig, sz_ds,
-                               err_ang1_norefine, err_ang2_norefine, t_norefine,
-                                   err_ang1_refine, err_ang2_refine, t_refine]
+                               err_ang1_norefine, err_ang2_norefine, 
+                               t_norefine, err_ang1_refine, err_ang2_refine, 
+                               t_refine]
                     
                 print(test_result)
                 results.append(test_result)
@@ -544,3 +554,5 @@ df = pd.DataFrame(results, columns = ['symmetry','emdid','size_orig', 'size_ds',
 df.to_csv("results.txt")
 df.to_excel("results.xlsx")
 #df.loc[df['symmetry']=='C1','err_ang1']
+
+df = pd.read_excel("results.xlsx")
