@@ -355,9 +355,15 @@ def AlignVolumes(vol1, vol2, verbose=0, opt=None):
     n_ds = min(n, downsample)  # Perform aligment on down sampled volumes.
     # This speeds up calculation, and does not seem
     # to degrade accuracy
-    logger.info('Downsampling volumes from %i to %i pixels', n, n_ds)
-    vol1_ds = cryo_downsample(vol1, (n_ds, n_ds, n_ds))
-    vol2_ds = cryo_downsample(vol2, (n_ds, n_ds, n_ds))
+    
+    if n_ds < n:
+        logger.info('Downsampling volumes from %i to %i pixels', n, n_ds)
+        vol1_ds = cryo_downsample(vol1, (n_ds, n_ds, n_ds))
+        vol2_ds = cryo_downsample(vol2, (n_ds, n_ds, n_ds))
+    else:
+        logger.info('No need for downsampling. n=%i n_ds=%i', n, n_ds)
+        vol1_ds = vol1
+        vol2_ds = vol2
 
     # Aligning the volumes:
     if G_flag == 1:
@@ -396,11 +402,20 @@ def AlignVolumes(vol1, vol2, verbose=0, opt=None):
         reflect = 1
         logger.info('***** Reflection detected *****')
     logger.info('Correlation between downsampled aligned volumes before optimization is %.4f', corr_v)
-    # Optimization:
-    # We use the BFGS optimization algorithm in order to refine the resulted
-    # transformation between the two volumes.
-    bestR = refine3DmatchBFGS(vol1_ds.copy(), vol2_ds.copy(), R_est, estdx_ds)
-    bestR = R.as_matrix(bestR)
+    
+    
+    
+    if opt.no_refine:
+        logger.info('Skipping refinement of alignment parameters')
+        bestR = R_est
+    else:
+        logger.info('Using BFGS algorithm to refine alignment parameters')
+        # Optimization:
+        # We use the BFGS optimization algorithm in order to refine the resulted
+        # transformation between the two volumes.
+        bestR = refine3DmatchBFGS(vol1_ds.copy(), vol2_ds.copy(), R_est, estdx_ds)
+        bestR = R.as_matrix(bestR)
+        
     logger.info('Done aligning downsampled volumes')
     logger.info('Applying estimated rotation to original volumes')
     vol2aligned = fastrotate3d(vol2.copy(), bestR)
@@ -410,6 +425,7 @@ def AlignVolumes(vol1, vol2, verbose=0, opt=None):
     vol2aligned = reshift_vol(vol2aligned, bestdx)
     bestcorr = np.mean(np.corrcoef(vol1.ravel(), vol2aligned.ravel(), rowvar=False)[0, 1:])
 
+    logger.info('Estimated rotation:\n'+str(bestR))
     logger.info('Estimated translations: [%.3f, %.3f, %.3f]', bestdx[0].real, bestdx[1].real, bestdx[2].real)
     logger.info('Correlation between original aligned volumes is %.4f', bestcorr)
     # Accurate error calculation:

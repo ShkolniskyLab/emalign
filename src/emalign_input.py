@@ -9,7 +9,8 @@ DEFAULT_N_PROJS = 30
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    
     parser.add_argument('-v1', '--vol1', help='Full path of first mrc input file', type=check_mrc_file_exist)
     parser.add_argument('-v2', '--vol2', help='Full path of second mrc input file', type=check_mrc_file_exist)
     parser.add_argument('-o', '--output-vol', help='Full path of output mrc file', type=check_mrc_file_not_exist)
@@ -17,6 +18,7 @@ def parse_args():
                         type=check_positive_int)
     parser.add_argument('--n-projs', help='Number of projections', default=DEFAULT_N_PROJS,
                         type=check_positive_int)
+    parser.add_argument('--no-refine', help='Skip optimization to refine aligment parameters', action='store_true', default=False)
     parser.add_argument('--output-parameters', help='Full path of output txt file for alignment parameters', default=None,
                         type=check_txt_file_not_exist)
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -148,7 +150,20 @@ def get_args():
                 break
         except ValueError:
             print("Number of projections must be a positive integer.")
+            
+    # Ask to skip refinement of alignment parameters
+    while True:
+        no_refine = input('Do you want to refine alignment parameters [y/n]')
 
+        if any(no_refine.lower() == f for f in ["yes", 'y', '1', 'ye']):
+            no_refine = False
+            break
+        elif any(no_refine.lower() == f for f in ['no', 'n', '0']):
+            no_refine = True
+            break
+        else:
+            print("Please choose y/n.")
+            
     # Check if user want to save parameters
     while True:
         save_params = input('Do you want to save output parameters [y/n]: ')
@@ -189,7 +204,7 @@ def get_args():
         else:
             print("Please choose y/n.")
 
-    return vol1, vol2, output_vol, downsample, n_projs, output_parameters, verbose
+    return vol1, vol2, output_vol, downsample, n_projs, no_refine, output_parameters, verbose
 
 
 def check_for_newer_version():

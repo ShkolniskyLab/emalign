@@ -45,7 +45,7 @@ def main():
 
     else:  # User didn't enter arguments, use interactive mode to get arguments.
         args = parse_args()  # Initiate args with default values.
-        args.vol1, args.vol2, args.output_vol, args.downsample, args.n_projs, args.output_parameters, args.verbose = get_args()
+        args.vol1, args.vol2, args.output_vol, args.downsample, args.n_projs, args.no_refine, args.output_parameters, args.verbose = get_args()
 
     # Check newer version
     try:
@@ -72,7 +72,8 @@ def main():
     opt = Struct()
     opt.Nref = args.n_projs
     opt.downsample = args.downsample
-
+    opt.no_refine = args.no_refine
+    
     # Run
     bestR, bestdx, reflect, vol2aligned, bestcorr = AlignVolumes(vol1, vol2, args.verbose, opt)
 
