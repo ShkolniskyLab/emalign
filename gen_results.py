@@ -12,6 +12,7 @@ import uuid
 import subprocess
 import scipy.spatial.transform
 import math
+import time
 
 import src.cryo_fetch_emdID
 import src.rand_rots
@@ -324,10 +325,46 @@ def measure_error(R,Rest,symmetry):
 
     return err_ang1, err_ang2
 
+def run_cmd(cmd):
+    '''
+    Run shell command
+
+    Parameters
+    ----------
+    cmd : string
+        Command to run.
+
+    Returns
+    -------
+    t : float
+        Execution time.
+
+    '''
+    
+    t_start = time.time()
+    
+    # Run without printouts
+    #subprocess.run(align_cmd)  
+    
+    # Run with printouts
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    # Grab stdout line by line as it becomes available.  
+    # This will loop until p terminates.
+    while p.poll() is None:
+        l = p.stdout.readline() # This blocks until it receives a newline.
+        print(l)
+        # When the subprocess terminates there might be unconsumed output 
+        # that still needs to be processed.
+        print(p.stdout.read())
+        
+    t_end = time.time()
+    return t_end-t_start
+
+
 def results_varying_N():
     init_random_state()
     
-    sz_vol = 64
+    sz_ds = 64 # Size of downsampled volume
     
     results = []
     
@@ -343,7 +380,8 @@ def results_varying_N():
         logger.info('Test %d/%d %s  (EMD%s)',testidx+1,len(test_densities),symmetry,emdid)
         
         vol = src.read_write.read_mrc(fnames_dict['ref'])
-        vol = src.common_finufft.cryo_downsample(vol,[sz_vol,sz_vol,sz_vol])
+        sz_orig = vol.shape[0]  # Size of original volume (before downsampling)
+        vol = src.common_finufft.cryo_downsample(vol,[sz_ds,sz_ds,sz_ds])
 
         # Generate a random rotation
         R = np.squeeze(src.rand_rots.rand_rots(1))
@@ -366,40 +404,64 @@ def results_varying_N():
             vol_rot_name = os.path.join(working_dir, vol_rot_name)
             src.read_write.write_mrc(vol_rot_name, volRotated1)
             
-            vol_aligned_name = str(uuid.uuid4())+'.mrc'
-            vol_aligned_name = os.path.join(working_dir, vol_aligned_name)
+            vol_aligned_norefine_name = str(uuid.uuid4())+'.mrc'
+            vol_aligned_norefine_name = os.path.join(working_dir,\
+                                                     vol_aligned_norefine_name)
+
+            vol_aligned_refine_name = str(uuid.uuid4())+'.mrc'
+            vol_aligned_refine_name = os.path.join(working_dir,\
+                                                     vol_aligned_refine_name)
+
+            params_norefine_name = str(uuid.uuid4())+'.txt'
+            params_refine_name = str(uuid.uuid4())+'.txt'
             
-            params_name = str(uuid.uuid4())+'.txt'
             
+            ####
+            # Run alignment without refiment
+            ####
             align_cmd = ('emalign --vol1 {0:s} --vol2 {1:s} '+
             '--output-vol {2:s} --downsample {3:d} '+
             '--output-parameters {4:s} --no-refine '+
-            '--verbose').format(vol_ref_name, vol_rot_name, vol_aligned_name, 
-                                                            sz_vol, 
-                                                            params_name)                         
+            '--verbose').format(vol_ref_name, vol_rot_name,
+                                vol_aligned_norefine_name, sz_ds, 
+                                params_norefine_name)                         
             
             # Run alignment command
-            print(align_cmd)
-            #subprocess.run(align_cmd)
-            p = subprocess.Popen(align_cmd, stdout=subprocess.PIPE)
-            # Grab stdout line by line as it becomes available.  
-            # This will loop until p terminates.
-            while p.poll() is None:
-                l = p.stdout.readline() # This blocks until it receives a newline.
-                print(l)
-            # When the subprocess terminates there might be unconsumed output 
-            # that still needs to be processed.
-            print(p.stdout.read())
-
+            t_norefine = run_cmd(align_cmd)
 
             # Read estimated matrix from paramters file
-            Rest = rot_from_params_file(params_name)
+            Rest = rot_from_params_file(params_norefine_name)
             Rest = Rest.transpose()
             
             # Calculate error between ground-truth and estimated rotation
-            err_ang1, err_ang2 = measure_error(R, Rest, symmetry)
+            err_ang1_norefine, err_ang2_norefine = measure_error(R, Rest, symmetry)
+
+
+            ####
+            # Run alignment with refiment
+            ####
+            align_cmd = ('emalign --vol1 {0:s} --vol2 {1:s} '+
+            '--output-vol {2:s} --downsample {3:d} '+
+            '--output-parameters {4:s}  '+
+            '--verbose').format(vol_ref_name, vol_rot_name, 
+                                vol_aligned_refine_name, sz_ds, 
+                                params_refine_name)                         
+            
+            # Run alignment command
+            t_refine = run_cmd(align_cmd)
+
+            # Read estimated matrix from paramters file
+            Rest = rot_from_params_file(params_refine_name)
+            Rest = Rest.transpose()
+            
+            # Calculate error between ground-truth and estimated rotation
+            err_ang1_refine, err_ang2_refine = measure_error(R, Rest, symmetry)
+
                 
-            test_result = [symmetry, emdid, sz_vol, err_ang1, err_ang2]
+            test_result = [symmetry, emdid, sz_orig, sz_ds,
+                           err_ang1_norefine, err_ang2_norefine, t_norefine,
+                               err_ang1_refine, err_ang2_refine, t_refine]
+                
             print(test_result)
             results.append(test_result)
         # Cleanup
@@ -410,11 +472,18 @@ def results_varying_N():
             if os.path.exists(vol_rot_name):
                 os.remove(vol_rot_name)
                         
-            if os.path.exists(vol_aligned_name):
-                os.remove(vol_aligned_name)
-   
-            if os.path.exists(params_name):
-                os.remove(params_name)
+            if os.path.exists(vol_aligned_norefine_name):
+                os.remove(vol_aligned_norefine_name)
+
+            if os.path.exists(vol_aligned_refine_name):
+                os.remove(vol_aligned_refine_name)
+
+            if os.path.exists(params_norefine_name):
+                os.remove(params_norefine_name)
+
+            if os.path.exists(params_refine_name):
+                os.remove(params_refine_name)
+
     return results
 
 # def temp():            
@@ -440,9 +509,9 @@ def results_varying_N():
 #             mapfile = next(tempfile._get_candidate_names())        
 #             src.cryo_fetch_emdID.cryo_fetch_emdID(emdid,mapfile)
 #             vol = src.read_write.read_mrc(mapfile)
-#             sz_vol = 64;
-#             vol = src.common_finufft.cryo_downsample(vol,[sz_vol,sz_vol,sz_vol])
-#             #vol = cryo_downsample(vol,sz_vol,0);
+#             sz_ds = 64;
+#             vol = src.common_finufft.cryo_downsample(vol,[sz_ds,sz_ds,sz_ds])
+#             #vol = cryo_downsample(vol,sz_ds,0);
 #         finally:
 #             if os.path.exists(mapfile):
 #                 os.remove(mapfile)
@@ -461,9 +530,11 @@ def results_varying_N():
 #         volRotated1 = src.reshift_vol.reshift_vol(volRotated1,[-5, 0, 0])
         
 #download_data('./data')
+
 results = results_varying_N()
 print(results)
-
-#import pandas as pd
-#df = pd.DataFrame(results, columns = ['symmetry','emdid','size', 'err_ang1','err_ang2'])
+import pandas as pd
+df = pd.DataFrame(results, columns = ['symmetry','emdid','size_orig', 'size_ds','err_ang1_norefine','err_ang2_norefine','t_norefine','err_ang1_refine','err_ang2_refine','t_refine'])
+df.to_csv("results.txt")
+df.to_excel("results.xlsx")
 #df.loc[df['symmetry']=='C1','err_ang1']
