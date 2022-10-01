@@ -6,7 +6,6 @@ Created on Sun Sep 25 21:49:00 2022
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.interpolate as interp
-
     
 def ndgrid (*xi):
     '''
@@ -27,6 +26,7 @@ def ndgrid (*xi):
     '''
 
     return np.meshgrid(*xi, indexing='ij')
+
 
 def FSCorr(m1,m2): 
     '''
@@ -73,14 +73,20 @@ def FSCorr(m1,m2):
     # Perform the sums
     d0 = R < 0.5 + eps
     c = np.zeros((int(np.floor(n / 2)),1))
-
+    
     for i in np.arange(1,int(np.floor(n / 2)+1)).reshape(-1):
         d1 = R < 0.5 + i + eps
         ring = np.logical_xor(d1,d0)
-        r1 = np.multiply(ring,f1)
-        r2 = np.multiply(ring,f2)
-        num = np.real(sum(sum(sum(np.multiply(r1,np.conjugate(r2))))))
-        den = np.sqrt(sum(sum(sum(np.abs(r1) ** 2))) * sum(sum(sum(np.abs(r2) ** 2))))
+        #r1 = np.multiply(ring,f1)
+        #r2 = np.multiply(ring,f2)
+        #num = np.real(sum(sum(sum(np.multiply(r1,np.conjugate(r2))))))
+        #den = np.sqrt(sum(sum(sum(np.abs(r1) ** 2))) * sum(sum(sum(np.abs(r2) ** 2))))
+        
+        r1 = f1[ring]
+        r2 = f2[ring]
+        num = np.real(sum(np.multiply(r1,np.conjugate(r2))))
+        den = np.sqrt(sum(np.abs(r1) ** 2) * sum(np.abs(r2) ** 2))
+            
         c[i-1] = num / den
         d0 = d1
     
@@ -237,7 +243,9 @@ def plotFSC(vol1, vol2 ,cutoff = 0.143, pixelsize = 1.0):
 
     return resA, fig    
 
-def plotFSC2(vol1a, vol2a , vol1b, vol2b, cutoff = 0.143, pixelsize = 1.0): 
+
+def plotFSC2(vol1a, vol2a , vol1b, vol2b, labels=None, 
+             cutoff = 0.143, pixelsize = 1.0, fname=None): 
     '''
     Draw Fourier shell correlation curve and estimate resolution.
     
@@ -297,6 +305,9 @@ def plotFSC2(vol1a, vol2a , vol1b, vol2b, cutoff = 0.143, pixelsize = 1.0):
     if (sz1a != sz2a) or (sz1a != sz1b) or (sz1a != sz2b):
         raise ValueError('Dimensions of all input volumes must be the same')
 
+    if (labels is not None) and (len(labels)!=2) :
+        raise ValueError('labels must contain two labels')
+
     fsc_a = FSCorr(vol1a,vol2a)
     n = np.asarray(fsc_a).size
     fsc_b = FSCorr(vol1b,vol2b)
@@ -348,8 +359,104 @@ def plotFSC2(vol1a, vol2a , vol1b, vol2b, cutoff = 0.143, pixelsize = 1.0):
     ax2.set_xticks(xticks_locs,xticks_labels)        
     ax2.set_xlabel('A')
            
-    ax.legend(['{0:5.2f}A'.format(resAa), '{0:5.2f}A'.format(resAb)])
+    if labels is None:      
+        ax.legend(['{0:5.2f}A'.format(resAa), '{0:5.2f}A'.format(resAb)])
+    else:
+        ax.legend([labels[0]+' {0:5.2f}A'.format(resAa), 
+                   labels[1]+' {0:5.2f}A'.format(resAb)])
+
     
     plt.show()
 
     return resAa, resAb, fig    
+
+
+def plotFSC3(vol1a, vol2a , vol1b, vol2b, vol1c, vol2c, labels=None,
+             cutoff = 0.143, pixelsize = 1.0, fname=None): 
+    '''
+    Same as plotFSC2 but for three pairs of volumes
+    '''
+
+    sz1a = vol1a.shape
+    sz2a = vol2a.shape
+    sz1b = vol1b.shape
+    sz2b = vol2b.shape
+    sz1c = vol1c.shape
+    sz2c = vol2c.shape
+    
+    if not all(x == sz1a for x in [sz2a,sz1b,sz2b,sz1c,sz2c]):
+        raise ValueError('Dimensions of all input volumes must be the same')
+        
+    if (labels is not None) and (len(labels)!=3) :
+        raise ValueError('labels must contain three labels')
+
+    fsc_a = FSCorr(vol1a,vol2a)
+    n = np.asarray(fsc_a).size
+    fsc_b = FSCorr(vol1b,vol2b)
+    fsc_c = FSCorr(vol1c,vol2c)
+    
+    fig, ax = plt.subplots(constrained_layout=True)
+    ax.grid(visible = True, axis = 'both')
+    ax.plot(np.arange(1,n+1),fsc_a,'-g', linewidth = 2.0)
+    ax.plot(np.arange(1,n+1),fsc_b,'-r', linewidth = 2.0)
+    ax.plot(np.arange(1,n+1),fsc_c,'-b', linewidth = 2.0)
+    
+    plt.xlim(np.array([1,n]))
+    plt.ylim(np.array([- 0.1,1.05]))
+    
+    # Plot cutoff line
+    y = np.ones((n)) * cutoff
+    ax.plot(np.arange(1,n+1),y, color='b', linestyle='--', linewidth=1.5)
+    
+    # Compute resolution - fscres return the bin number where the cutoff
+    # resolution is obtained.    
+    j_a = fscres(fsc_a,cutoff)
+    resAa = 2 * pixelsize * n / j_a
+    j_b = fscres(fsc_b,cutoff)
+    resAb = 2 * pixelsize * n / j_b
+    j_c = fscres(fsc_c,cutoff)
+    resAc = 2 * pixelsize * n / j_c
+            
+    yy = ax.get_ylim()
+    ax.vlines(j_a,0,yy[1], colors='b', linestyles='dashed') 
+    ax.vlines(j_b,0,yy[1], colors='b', linestyles='dashed') 
+    ax.vlines(j_c,0,yy[1], colors='b', linestyles='dashed') 
+
+    # Replace the default ticks with frequnecy values   
+    xticks_locs = ax.get_xticks()    
+    df = 1.0 / (2.0 * pixelsize * n)
+    xticks = xticks_locs * df
+    
+    xticks_labels = []
+    for e in xticks:
+        xticks_labels.append('{0:7.3f}'.format(e))
+    ax.set_xticks(xticks_locs,xticks_labels)        
+    ax.set_xlabel('1/A')
+    
+    # Add top axis
+    ax2 = ax.twiny()
+    xticks_locs = ax.get_xticks()   
+    xticks_labels = []
+    for e in xticks:
+        if e > 0:
+            xticks_labels.append('{0:7.3f}'.format(1/e))
+        else:
+            xticks_labels.append(' ')
+                        
+    ax2.set_xticks(xticks_locs,xticks_labels)        
+    ax2.set_xlabel('A')
+     
+    if labels is None:      
+        ax.legend(['{0:5.2f}A'.format(resAa), '{0:5.2f}A'.format(resAb), 
+                   '{0:5.2f}A'.format(resAc)])
+    else:
+        ax.legend([labels[0]+' {0:5.2f}A'.format(resAa), 
+                   labels[1]+' {0:5.2f}A'.format(resAb), 
+                   labels[2]+' {0:5.2f}A'.format(resAc)])
+        
+    if fname is not None:
+        plt.savefig(fname, dpi = 300)
+
+    plt.show()
+
+    return resAa, resAb, resAc, fig    
