@@ -245,7 +245,7 @@ def plotFSC(vol1, vol2 ,cutoff = 0.143, pixelsize = 1.0):
 
 
 def plotFSC2(vol1a, vol2a , vol1b, vol2b, labels=None, 
-             cutoff = 0.143, pixelsize = 1.0, fname=None): 
+             cutoff = 0.143, pixelsize = 1.0, figname=None): 
     '''
     Draw Fourier shell correlation curve and estimate resolution.
     
@@ -282,6 +282,8 @@ def plotFSC2(vol1a, vol2a , vol1b, vol2b, labels=None,
         this value. Common values are 0.143 and 0.5. The default is 0.143.
     pixelsize : float, optional
         Pixel size of the volumes. The default is 1.0A.
+    figname: string, optional
+        If not None, the FSC plot would be saved to a file with this name.
 
     Returns
     -------
@@ -314,8 +316,8 @@ def plotFSC2(vol1a, vol2a , vol1b, vol2b, labels=None,
     
     fig, ax = plt.subplots(constrained_layout=True)
     ax.grid(visible = True, axis = 'both')
-    curve1 = ax.plot(np.arange(1,n+1),fsc_a,'-g', linewidth = 2.0)
-    curve2 = ax.plot(np.arange(1,n+1),fsc_b,'-r', linewidth = 2.0)
+    ax.plot(np.arange(1,n+1),fsc_a,'-g', linewidth = 2.0)
+    ax.plot(np.arange(1,n+1),fsc_b,'-r', linewidth = 2.0)
     
     plt.xlim(np.array([1,n]))
     plt.ylim(np.array([- 0.1,1.05]))
@@ -365,14 +367,18 @@ def plotFSC2(vol1a, vol2a , vol1b, vol2b, labels=None,
         ax.legend([labels[0]+' {0:5.2f}A'.format(resAa), 
                    labels[1]+' {0:5.2f}A'.format(resAb)])
 
-    
+    fig1 = plt.gcf()
     plt.show()
+    plt.draw()
+
+    if figname is not None:
+        fig1.savefig(figname, dpi = 300)
 
     return resAa, resAb, fig    
 
 
 def plotFSC3(vol1a, vol2a , vol1b, vol2b, vol1c, vol2c, labels=None,
-             cutoff = 0.143, pixelsize = 1.0, fname=None): 
+             cutoff = 0.143, pixelsize = 1.0, figname=None): 
     '''
     Same as plotFSC2 but for three pairs of volumes
     '''
@@ -454,9 +460,11 @@ def plotFSC3(vol1a, vol2a , vol1b, vol2b, vol1c, vol2c, labels=None,
                    labels[1]+' {0:5.2f}A'.format(resAb), 
                    labels[2]+' {0:5.2f}A'.format(resAc)])
         
-    if fname is not None:
-        plt.savefig(fname, dpi = 300)
-
+    fig1 = plt.gcf()
     plt.show()
+    plt.draw()
+
+    if figname is not None:
+        fig1.savefig(figname, dpi = 300)
 
     return resAa, resAb, resAc, fig    
