@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Sun Sep 25 22:04:50 2022
@@ -13,6 +14,9 @@ import subprocess
 import scipy.spatial.transform
 import math
 import time
+import shlex
+import parse
+import pandas as pd
 
 import src.cryo_fetch_emdID
 import src.rand_rots
@@ -21,24 +25,25 @@ import src.common_finufft
 import src.fastrotate3d
 import src.reshift_vol
 import src.SymmetryGroups
+import src.fsc
 
 test_densities = [
-    ['C1',     '2660',     3.2],
-    ['C2',     '0667',    6.2],
-    ['C3',     '0731',    2.85],
-    ['C4',     '0882',    3.3],
-    ['C5',    '21376',    2.6],
-    ['C7',    '11516',    2.38],
-    ['C8',    '21143',    3.63],
-    ['C11',  '6458',    4.7],
-    ['D2',    '30913',    1.93],
-    ['D3',    '20016',    2.77],
-    ['D4',    '22462',    2.06],
-    ['D7',     '9233',    2.1],
-    ['D11',    '21140',    3.68],
-    ['T',     '4179',    4.1],
-    ['O',    '22658',    1.36],
-    ['I',   '24494',    2.27]
+    ['C1',     '2660',    1.34],
+    ['C2',     '0667',    1.38],
+    ['C3',     '0731',    0.88],
+    ['C4',     '0882',    1.45],
+    ['C5',    '21376',    0.91],
+    ['C7',    '11516',    0.646],
+    ['C8',    '21143',    1.06],
+    ['C11',    '6458',    0.86],
+    ['D2',    '30913',    0.7999967],
+    ['D3',    '20016',    0.83],
+    ['D4',    '22462',    0.844],
+    ['D7',     '9233',    0.66159993],
+    ['D11',   '21140',    1.06],
+    ['T',      '4179',    0.97],
+    ['O',     '22658',    0.502],
+    ['I',     '24494',    1.06 ]
 ]
 
 working_dir = "./data"
@@ -195,16 +200,14 @@ def get_test_filenames(working_dir, emdid):
        ref: 'map_EMDID_ref.mrc'
        transformed: 'map_EMDID_transformed.mrc',
        aligned_norefine: 'map_EMDID_aligned_norefine.mrc',
-       aligned_refine: 'map_EMDID_aligned_refine.mrc',
-       aligned_eman: 'map_EMDID_aligned_eman.mrc'
+       aligned_refine: 'map_EMDID_aligned_refine.mrc'       
     '''
     
     dict={}
     dict['ref'] = os.path.join(working_dir,'map_{0:s}_ref.mrc'.format(emdid))
     dict['transformed'] = os.path.join(working_dir,'map_{0:s}_transformed.mrc'.format(emdid))
     dict['aligned_norefine'] = os.path.join(working_dir,'map_{0:s}_aligned_norefine.mrc'.format(emdid))
-    dict['aligned_refine'] = os.path.join(working_dir,'map_{0:s}_aligned_refine.mrc'.format(emdid))
-    dict['aligned_eman'] = os.path.join(working_dir,'map_{0:s}_aligned_eman.mrc'.format(emdid))
+    dict['aligned_refine'] = os.path.join(working_dir,'map_{0:s}_aligned_refine.mrc'.format(emdid))    
     
     return dict
 
@@ -346,19 +349,30 @@ def run_cmd(cmd):
     t_start = time.time()
     
     # Run without printouts
-    #subprocess.run(align_cmd)  
+    subprocess.run(shlex.split(cmd))  
     
     # Run with printouts
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
-    # Grab stdout line by line as it becomes available.  
-    # This will loop until p terminates.
-    while p.poll() is None:
-        l = p.stdout.readline() # This blocks until it receives a newline.
-        print(l)
-        # When the subprocess terminates there might be unconsumed output 
-        # that still needs to be processed.
-        print(p.stdout.read())
+    # p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, 
+    #                      shell=False, bufsize = 0, close_fds = True)
+    # # Grab stdout line by line as it becomes available.  
+    # # This will loop until p terminates.
+    # # while p.poll() is None:
+    # #     l = p.stdout.readline() # This blocks until it receives a newline.
+    # #     print(l)
+    # #     # When the subprocess terminates there might be unconsumed output 
+    # #     # that still needs to be processed.
+    # #     print(p.stdout.read())
         
+    # while True:        
+    #     output = p.stdout.readline()
+    #     if output == '' and p.poll() is not None:
+    #         break
+    #     if output:
+    #         print(output.strip())
+    # print(p.stdout.read())
+    # p.stdout.close()
+    # p.wait()
+            
     t_end = time.time()
     return t_end-t_start
 
@@ -387,26 +401,33 @@ def results_varying_N():
                         len(test_densities),symmetry,emdid)
             
             vol = src.read_write.read_mrc(fnames_dict['ref'])            
+            #vol = src.common_finufft.cryo_downsample(vol,[64,64,64])
+            
+            
             sz_orig = vol.shape[0]  # Size of original volume (before downsampling)
-                                    
-            if sz_orig > sz_ds: # Check if need to downsample
-                vol = src.common_finufft.cryo_downsample(vol,
-                                                         [sz_ds,sz_ds,sz_ds])
-            else:
-                sz_ds = sz_orig            
-    
+
             # Generate a random rotation
             R = np.squeeze(src.rand_rots.rand_rots(1))
             assert abs(np.linalg.det(R)-1) <1.0e-8
-    
+
+
+            # sz_ds_sav = sz_ds  # Save the current downsampling in case we 
+            #                     # modify it
+            # if sz_orig > sz_ds: # Check if need to downsample
+            #     vol = src.common_finufft.cryo_downsample(vol,
+            #                                               [sz_ds,sz_ds,sz_ds])
+            # else:
+            #     sz_ds = sz_orig            
+
+
             # Rotate the reference volume by the random rotation
-            volRotated1 = src.fastrotate3d.fastrotate3d(vol,R)
+            vol_transformed = src.fastrotate3d.fastrotate3d(vol,R)
             
-            # Add shift
-            # volRotated1 = src.reshift_vol.reshift_vol(volRotated1,[-5, 0, 0])
-    
-            try:
-                
+            # Add shift of up to 10%
+            shift = np.floor((np.random.rand(3)-1/2)*sz_orig*0.1)
+            vol_transformed = src.reshift_vol.reshift_vol(vol_transformed,shift)
+            
+            try:                
                 # Save the two volues to align
                 vol_ref_name = str(uuid.uuid4())+'.mrc'
                 vol_ref_name = os.path.join(working_dir, vol_ref_name)
@@ -414,7 +435,7 @@ def results_varying_N():
     
                 vol_rot_name = str(uuid.uuid4())+'.mrc'
                 vol_rot_name = os.path.join(working_dir, vol_rot_name)
-                src.read_write.write_mrc(vol_rot_name, volRotated1)
+                src.read_write.write_mrc(vol_rot_name, vol_transformed)
                 
                 vol_aligned_norefine_name = str(uuid.uuid4())+'.mrc'
                 vol_aligned_norefine_name = os.path.join(working_dir,\
@@ -477,9 +498,11 @@ def results_varying_N():
                                err_ang1_norefine, err_ang2_norefine, 
                                t_norefine, err_ang1_refine, err_ang2_refine, 
                                t_refine]
-                    
+                                    
                 print(test_result)
                 results.append(test_result)
+                # sz_ds = sz_ds_sav  # Restore current downsampling
+                
             # Cleanup
             finally:
                 if os.path.exists(vol_ref_name):
@@ -502,57 +525,229 @@ def results_varying_N():
 
     return results
 
-# def temp():            
-#     np.random.set_state(random_state)
 
-# # Set table of tested maps.
-# # First column is symmetry type, second column is EMD-id, third column is EMDB 
-# # reported resolution
+def results_eman():
 
-
-#     for testidx in range(len(test_densities)):
+    disable_preprocess = True
+    disable_analysis = False
     
-#         #Generate two density maps
+    if not disable_preprocess:
+        # Create EMAN script file
+        eman_script =  open("run_eman.sh", 'w')
+        emalign_script =  open("run_emalign.sh", 'w')
+
+    results = []
     
-#         test_data = test_densities[testidx]
-#         symmetry = test_data[0]
-#         emdid = test_data[1]
-#         resolution = test_data[2]
-
-#         logger.info('Test %d/%d %s  (EMD%s)',testidx+1,len(test_densities),symmetry,emdid)
-
-#         try:
-#             mapfile = next(tempfile._get_candidate_names())        
-#             src.cryo_fetch_emdID.cryo_fetch_emdID(emdid,mapfile)
-#             vol = src.read_write.read_mrc(mapfile)
-#             sz_ds = 64;
-#             vol = src.common_finufft.cryo_downsample(vol,[sz_ds,sz_ds,sz_ds])
-#             #vol = cryo_downsample(vol,sz_ds,0);
-#         finally:
-#             if os.path.exists(mapfile):
-#                 os.remove(mapfile)
-                        
-#         # Generate a random rotation
-#         R, dummy = np.linalg.qr(np.random.rand(3,3))
-
-#         # Rotate the reference volume by the random rotation
-#         volRotated1 = src.fastrotate3d.fastrotate3d(vol,R)
-   
-#         # Generate a reflected volume
-#         volRotated2 = np.flip(volRotated1,axis=2)
-#         volRotated2 = src.reshift_vol.reshift_vol(volRotated2,[-5, 0, 0])
-   
-#         # Add shift
-#         volRotated1 = src.reshift_vol.reshift_vol(volRotated1,[-5, 0, 0])
+    for testidx in range(len(test_densities)):
         
+        #Generate two density maps
+        
+        test_data = test_densities[testidx]
+        symmetry = test_data[0]
+        emdid = test_data[1]        
+        
+        # Generate filenames
+        eman_dir = "./eman"            
+        fnames_dict={}
+        fnames_dict['ref'] = os.path.join("data",'map_{0:s}_ref.mrc'.format(emdid))
+        fnames_dict['ref_copy'] = os.path.join(eman_dir,'map_{0:s}_ref.mrc'.format(emdid))
+        fnames_dict['transformed'] = os.path.join(eman_dir,'map_{0:s}_transformed.mrc'.format(emdid))
+        fnames_dict['aligned_norefine'] = os.path.join(eman_dir,'map_{0:s}_aligned_norefine.mrc'.format(emdid))
+        fnames_dict['aligned_refine'] = os.path.join(eman_dir,'map_{0:s}_aligned_refine.mrc'.format(emdid))
+        fnames_dict['aligned_eman'] = os.path.join(eman_dir,'map_{0:s}_aligned_eman.mrc'.format(emdid))
+        fnames_dict['ref_rot'] = os.path.join(eman_dir,'ref_rot_{0:s}.txt'.format(emdid))
+        fnames_dict['output_eman'] = os.path.join(eman_dir,'params_eman_{0:s}.txt'.format(emdid))        
+        fnames_dict['timing_eman'] = os.path.join(eman_dir,'timing_eman_{0:s}.txt'.format(emdid))
+        fnames_dict['output_norefine'] = os.path.join(eman_dir,'output_norefine_{0:s}.txt'.format(emdid))
+        fnames_dict['output_refine'] = os.path.join(eman_dir,'output_refine_{0:s}.txt'.format(emdid))
+        fnames_dict['timing_norefine'] = os.path.join(eman_dir,'timing_norefine_{0:s}.txt'.format(emdid))
+        fnames_dict['timing_refine'] = os.path.join(eman_dir,'timing_refine_{0:s}.txt'.format(emdid))
+                
+        logger.info('Test %d/%d %s  (EMD%s)',testidx+1,
+                            len(test_densities),symmetry,emdid)
+            
+        if not disable_preprocess:
+            vol = src.read_write.read_mrc(fnames_dict['ref'])            
+                            
+            sz_orig = vol.shape[0]  # Size of original volume (before downsampling)
+    
+            # Generate a random rotation
+            R = np.squeeze(src.rand_rots.rand_rots(1))
+            assert abs(np.linalg.det(R)-1) <1.0e-8
+        
+            #rot_obj = scipy.spatial.transform.Rotation.from_matrix(R)
+            #print(rot_obj.as_euler('zyz', degrees = True))
+    
+    
+            # Rotate the reference volume by the random rotation
+            vol_transformed = src.fastrotate3d.fastrotate3d(vol,R)
+                
+            # Add shift of up to 10%
+            shift = np.floor((np.random.rand(3)-1/2)*sz_orig*0.1)
+            vol_transformed = src.reshift_vol.reshift_vol(vol_transformed,shift)
+            
+            # Save volumes to align        
+            src.read_write.write_mrc(fnames_dict["ref_copy"], vol)                
+            src.read_write.write_mrc(fnames_dict["transformed"], vol_transformed)                
+    
+            # Save rotation paramters    
+            with open(fnames_dict["ref_rot"], 'w') as f:
+                f.write(str(R)+"\n")
+                    
+                # Generate EMAN script        
+       
+            eman_script.write("start=`date +%s`\n")
+            eman_script.write(("e2proc3d.py {0:s} {1:s} --alignref {2:s} " + 
+                          "--align rotate_translate_3d_tree "+
+                          "--verbose 1 > {3:s}\n"
+                          ).format(fnames_dict["transformed"],
+                                   fnames_dict["aligned_eman"],
+                                   fnames_dict["ref"], fnames_dict["output_eman"]))
+            eman_script.write("end=`date +%s`\n")
+            eman_script.write(("echo `expr $end - $start` > {0:s}\n\n"
+                               ).format(fnames_dict["timing_eman"]))
+        
+            eman_script.flush()
+            
+            ###################################################################
+            # You have to run the EMAN script run_eman.sh from 
+            # command line, It is not possible ti run it from within Pyhton since
+            # it uses a different conda environment
+            ###################################################################
+        
+        
+            # Generate emalign script
+            sz_ds = 64
+                    
+            # Run alignment without refiment                    
+            align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
+                '--output-vol {2:s} --downsample {3:d} '+
+                '--output-parameters {4:s} --no-refine '+
+                '--verbose').format(fnames_dict['ref_copy'], fnames_dict['transformed'],
+                                    fnames_dict['aligned_norefine'], sz_ds, 
+                                    fnames_dict['output_norefine'])
+                                        
+            emalign_script.write("start=`date +%s`\n")
+            emalign_script.write(align_cmd+"\n")
+            emalign_script.write("end=`date +%s`\n")
+            emalign_script.write(("echo `expr $end - $start` > {0:s}\n"
+                                   ).format(fnames_dict["timing_norefine"]))
+            emalign_script.write("\n")
+       
+        
+            # Run alignment with refiment
+            align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
+                '--output-vol {2:s} --downsample {3:d} '+
+                '--output-parameters {4:s} '+
+                '--verbose').format(fnames_dict['ref_copy'], fnames_dict['transformed'],
+                                    fnames_dict['aligned_refine'], sz_ds, 
+                                    fnames_dict['output_refine'])
+                                    
+            emalign_script.write("start=`date +%s`\n")
+            emalign_script.write(align_cmd+"\n")
+            emalign_script.write("end=`date +%s`\n")
+            emalign_script.write(("echo `expr $end - $start` > {0:s}\n"
+                                  ).format(fnames_dict["timing_refine"]))
+            emalign_script.write("\n\n")
+        
+            emalign_script.flush()
+            
+        if not disable_analysis:
+        # Parse outputs
+        
+            R_ref = rot_from_params_file(fnames_dict["ref_rot"])        
+            
+            # Eman accuracy
+            with open(fnames_dict["output_eman"], 'r') as f:
+                lines = f.readlines() 
+                res = (parse.search("'az':{0:g},'alt':{},'phi':{},'tx'",lines[1]))
+                az = float(res[0])
+                alt = float(res[1])
+                phi = float(res[2])
+                
+                # It seems that 
+                # (scipy.spatial.transform.Rotation.from_matrix(R.transpose())).as_euler('zyz',degrees=True)
+                # is equivalent to [az,alt,phi-180].
+                # In other words, 
+                # (scipy.spatial.transform.Rotation.from_euler('zyz',[float(az),float(alt),float(phi)-180], degrees=True)).as_matrix()-R.transpose()
+                # is small
+                
+                R_eman = ((scipy.spatial.transform.Rotation.from_euler('zyz',[float(az),float(alt),float(phi)], degrees=True)).as_matrix()).transpose()
+                err_ang1_eman, err_ang2_eman = measure_error(R_ref,R_eman,symmetry)
+                
+            # Eman Timing
+            with open(fnames_dict["timing_eman"], 'r') as f:
+                t_eman = float(f.readline())
+              
+            # Emalign accuracy
+            R_norefine = rot_from_params_file(fnames_dict["output_norefine"])
+            err_ang1_norefine, err_ang2_norefine = measure_error(R_ref, 
+                                            R_norefine.transpose(), symmetry)
+
+
+            R_refine = rot_from_params_file(fnames_dict["output_refine"])
+            err_ang1_refine, err_ang2_refine = measure_error(R_ref, 
+                                R_refine.transpose(), symmetry)
+
+
+            # Emalign timing
+            with open(fnames_dict["timing_norefine"], 'r') as f:
+                t_norefine = float(f.readline())
+              
+            with open(fnames_dict["timing_refine"], 'r') as f:
+                t_refine = float(f.readline())
+    
+            
+            # Save results
+            vol_ref = src.read_write.read_mrc(fnames_dict["ref"])
+            sz_orig = vol_ref.shape[0]
+            
+            test_result = [symmetry, emdid, sz_orig, err_ang1_norefine, 
+                           err_ang2_norefine, t_norefine, err_ang1_refine, 
+                           err_ang2_refine, t_refine,err_ang1_eman, 
+                           err_ang2_eman, t_eman]
+                                    
+            print(test_result)
+            results.append(test_result)
+
+            # Plot FSCs
+            vol_ref = src.read_write.read_mrc(fnames_dict["ref"])
+            vol_eman = src.read_write.read_mrc(fnames_dict["aligned_eman"])
+            vol_norefine = src.read_write.read_mrc(fnames_dict["aligned_norefine"])
+            vol_refine = src.read_write.read_mrc(fnames_dict["aligned_refine"])
+            
+            resAa, resAb, resAc, fig = src.fsc.plotFSC3(vol_ref, vol_eman, 
+                              vol_ref, vol_norefine, 
+                              vol_ref, vol_refine, 
+                              labels = ['eman','no refine','refine'],
+                              cutoff = 0.5, 
+                              pixelsize=(test_densities[testidx])[2],
+                              figname = "fsc_{0:s}.png".format(emdid))
+            
+  
+    if not disable_preprocess:
+        eman_script.close()
+        emalign_script.close()
+    
+
+    if not disable_analysis:
+        df = pd.DataFrame(results, columns = ['symmetry','emdid','size_orig',
+                        'err_ang1_norefine','err_ang2_norefine','t_norefine',
+                        'err_ang1_refine','err_ang2_refine','t_refine',
+                        'err_ang1_eman', 'err_ang2_eman', 't_eman'])    
+        df.to_csv("results_eman.txt")
+        df.to_excel("results_eman.xlsx")
+
 #download_data('./data')
 
-results = results_varying_N()
-print(results)
-import pandas as pd
-df = pd.DataFrame(results, columns = ['symmetry','emdid','size_orig', 'size_ds','err_ang1_norefine','err_ang2_norefine','t_norefine','err_ang1_refine','err_ang2_refine','t_refine'])
-df.to_csv("results.txt")
-df.to_excel("results.xlsx")
-#df.loc[df['symmetry']=='C1','err_ang1']
+# results = results_varying_N()
+# print(results)
+# import pandas as pd
+# df = pd.DataFrame(results, columns = ['symmetry','emdid','size_orig', 'size_ds','err_ang1_norefine','err_ang2_norefine','t_norefine','err_ang1_refine','err_ang2_refine','t_refine'])
+# df.to_csv("results.txt")
+# df.to_excel("results.xlsx")
+# #df.loc[df['symmetry']=='C1','err_ang1']
 
-df = pd.read_excel("results.xlsx")
+# df = pd.read_excel("results.xlsx")
+
+results_eman()
