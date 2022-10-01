@@ -17,9 +17,9 @@ def eval3Dshift(X, vol1, vol2):
     dx = X[0]
     dy = X[1]
     dz = X[2]
-    vol2_s = reshift_vol(vol2.copy(), np.array([dx, dy, dz]))
-    c = np.mean(np.corrcoef(vol1.ravel(), vol2_s.ravel(), rowvar=False)[0, 1:])
-    e = 1 - c
+    vol2_s = reshift_vol(vol2, np.array([dx, dy, dz]))
+    c = np.mean(np.corrcoef(vol1.ravel(), vol2_s.ravel(), rowvar=False)[0, 1:]).astype('float64')
+    e = 1.0 - c
     return e
 
 
@@ -28,7 +28,8 @@ def refine3DshiftBFGS(vol1, vol2, estdx):
     # Create initial guess vector
     X0 = np.array([estdx[0].real, estdx[1].real, estdx[2].real]).astype('float64')
     # BFGS optimization:
-    res = minimize(eval3Dshift, X0, args=(vol1, vol2), method='BFGS', tol=1e-4)
+    res = minimize(eval3Dshift, X0, args=(vol1, vol2), method='BFGS', tol=1e-1,
+                   options={'gtol': 1e-2, 'disp': False})
     X = res.x
     estdx = np.array([X[0], X[1], X[2]])
     return estdx
@@ -76,6 +77,9 @@ def register_translations_3d(vol1, vol2):
     [sX, sY, sZ] = np.unravel_index(ii, np.shape(r))
     estdx = [cX - sX, cY - sY, cZ - sZ]
 
-    bestdx = refine3DshiftBFGS(vol1, vol2, estdx)
+    # No need to refine tranlations
+    return np.array(estdx)
 
-    return bestdx
+    # bestdx = refine3DshiftBFGS(vol1, vol2, estdx)
+
+    # return bestdx
