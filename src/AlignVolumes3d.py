@@ -386,9 +386,9 @@ def AlignVolumes(vol1, vol2, verbose=0, opt=None):
     no1 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_ds.ravel(), rowvar=False)[0, 1:])
     no2 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_J_ds.ravel(), rowvar=False)[0, 1:])
 
-    if max(no1, no2) < 0.1:  # The coorelations of the estimated rotations are
-        # smaller than 0.1, that is, no transformation was recovered.
-        raise Warning("***** Alignment failed *****")
+    # if max(no1, no2) < 0.1:  # The coorelations of the estimated rotations are
+    #     # smaller than 0.1, that is, no transformation was recovered.
+    #     raise Warning("***** Alignment failed *****")
     # Do we have reflection?
     reflect = 0
     corr_v = no1
