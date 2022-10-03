@@ -70,7 +70,7 @@ def main():
         pass
 
     opt = Struct()
-    opt.Nref = args.n_projs
+    opt.Nprojs = args.n_projs
     opt.downsample = args.downsample
     opt.no_refine = args.no_refine
     
