@@ -56,7 +56,7 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
         opt.sym- the symmetry type- 'Cn'\'Dn'\'T'\'O'\'I', where n is the the 
              symmetry order (for example: 'C2'). This input is reqired only for 
              the error calculation.
-        opt.Nref- number of reference projections for the alignment. (default 
+        opt.Nprojs- number of reference projections for the alignment. (default 
                    is 30).
         opt.isshift- set isshift to nonzero in order to estimate the translations 
                      of the projections (default is zero).
@@ -75,10 +75,10 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     
     # Check options:
     if hasattr(opt,'sym'): sym = opt.sym
-    else: sym = None
+    else: sym = None    
     
-    if hasattr(opt,'Nref'): Nref = opt.Nref
-    else: Nref = 30
+    if hasattr(opt,'Nprojs'): Nprojs = opt.Nprojs
+    else: Nprojs = 30
         
     if hasattr(opt,'G'): G = opt.G
     else: G = None
@@ -134,13 +134,13 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     n_projs = np.size(projs_hat,2)
     
     # Generate candidate rotations and reference projections:
-    logger.info('Generating %i reference projections', Nref)
+    logger.info('Generating %i reference projections', Nprojs)
     if canrots == 0:
         Rots = genRotationsGrid(75)
     candidate_rots = Rots
     Nrot = np.size(candidate_rots,2)
     logger.info('Using %i candidate rotations for the alignment', Nrot)     
-    rots_ref = Rots[:,:,np.random.randint(Nrot, size=Nref)] 
+    rots_ref = Rots[:,:,np.random.randint(Nrot, size=Nprojs)] 
     #rots_ref = mat_to_npy('rots_ref_for_AlignProjection2D')
     
     ref_projs = cryo_project(vol, rots_ref)    
@@ -157,12 +157,12 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     # Compute the common lines between the candidate rotations and the 
     # references:
     logger.info('Computing the common lines between reference and unaligned projections')     
-    Ckj = (-1)*np.ones((Nrot,Nref),dtype=int)
-    Cjk = (-1)*np.ones((Nrot,Nref),dtype=int)
-    Mkj = np.zeros((Nrot,Nref),dtype=int)
+    Ckj = (-1)*np.ones((Nrot,Nprojs),dtype=int)
+    Cjk = (-1)*np.ones((Nrot,Nprojs),dtype=int)
+    Mkj = np.zeros((Nrot,Nprojs),dtype=int)
     for k in range(Nrot):
         Rk = np.transpose(candidate_rots[:,:,k])
-        for j in range(Nref):
+        for j in range(Nprojs):
             Rj = np.transpose(rots_ref[:,:,j])
             if np.sum(Rk[:,2] @ Rj[:,2]) < 0.999:
                 (ckj,cjk) = commonline_R2(Rk,Rj,L)
@@ -203,8 +203,8 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     if refshift == 1:
         err_shifts = np.zeros((2,n_projs))
     for projidx in range(n_projs):
-        cross_corr_m = np.zeros((Nrot,Nref))
-        for j in range(Nref):
+        cross_corr_m = np.zeros((Nrot,Nprojs))
+        for j in range(Nprojs):
             iidx = np.array(np.where(Mkj[:,j] != 0)).T
             conv_hat = (projs_hat[:,Ckj[iidx,j],projidx].conj() * refprojs_hat[:,Cjk[iidx,j],j]).reshape((n_r,np.size(iidx,axis=0))) # size of (n_rxsize(iidx))
             temp_corr = np.real(s_phases.conj().T @ conv_hat)
