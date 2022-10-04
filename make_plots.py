@@ -22,7 +22,7 @@ def make_full_figname(figname):
 # Plot accuracy vs downsampling size, averaged over all symmetry groups
 # 
 
-df = pd.read_excel("results.xlsx")
+df = pd.read_excel("results_varying_downsampling.xlsx")
 err1 = []
 err2 = []
 ds_sizes = [16, 32, 64, 128]
@@ -56,7 +56,7 @@ plt.show()
 # Figure 2:
 # Same as Fig.1, but focus only on sizes 64 and 128
 
-df = pd.read_excel("results.xlsx")
+df = pd.read_excel("results_varying_downsampling.xlsx")
 err1 = []
 err2 = []
 ds_sizes = [64, 128]
@@ -88,7 +88,7 @@ plt.show()
 # Figure 3:
 # For downsampling size 64, show error before and after refinement
 
-df = pd.read_excel("results.xlsx")
+df = pd.read_excel("results_varying_downsampling.xlsx")
 err_norefine = []
 err_refine = []
 ds_size = 64
@@ -124,7 +124,7 @@ plt.show()
 # Figure 4:
 # Show timing in seconds vs volume size
 
-df = pd.read_excel("results.xlsx")
+df = pd.read_excel("results_varying_downsampling.xlsx")
 ds_sizes = [64, 128]
 markers = ['o', 's', 'v', '+', '.', 'x', 'd', '.']
 marker_idx = 0
@@ -210,7 +210,7 @@ plt.show()
 # Show timing vs n_projs with and without refinement
 
 df = pd.read_excel("results_varying_nprojs.xlsx")
-n_projs_list = [25, 30, 100]
+n_projs_list = [10, 15, 20, 25, 30, 100]
 markers = ['o', 's', 'p', 'h', 'v', 'x', 'd', '.']
 marker_idx = 0
 
