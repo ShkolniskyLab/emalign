@@ -275,7 +275,7 @@ plt.xticks([r + barWidth for r in br1.ravel()],
  
 plt.legend()
 plt.subplots_adjust(wspace=0.4)
-plt.savefig('eman_comparison_accuracy.png', dpi=300)
+plt.savefig(make_full_figname('eman_comparison_accuracy.png'), dpi=300)
 plt.show()
 
 
@@ -308,6 +308,6 @@ plt.xticks([r + barWidth for r in br1.ravel()],
         ["{0:04d}".format(x) for x in df["emdid"]], fontsize = 6)
  
 plt.legend()
-plt.savefig('eman_comparison_timing.png', dpi=300)
+plt.savefig(make_full_figname('eman_comparison_timing.png'), dpi=300)
 plt.show()
 
