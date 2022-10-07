@@ -55,9 +55,11 @@ emalign_cmd = shutil. which('emalign')
 # Setup logger
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
+
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger()
+
 # Save both to file and console
 fh = logging.FileHandler('./emalign.log')
 fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
@@ -398,6 +400,7 @@ def results_varying_downsampling():
     data_dir = './data/'    
     results = []    
     sizes = [16, 32, 64, 128]  # Sizes of downsampled volumes
+    #sizes = [16, 32, 64]  # Sizes of downsampled volumes
         
     for sz_ds in sizes:
         
@@ -463,7 +466,7 @@ def results_varying_downsampling():
                 '--n-projs {4:d} '+
                 '--output-parameters {5:s} --no-refine '+
                 '--verbose').format(vol_ref_name, vol_rot_name,
-                                    vol_aligned_norefine_name, sz_ds, 30,
+                                    vol_aligned_norefine_name, sz_ds, 50,
                                     params_norefine_name)                         
            
                                     
@@ -487,7 +490,7 @@ def results_varying_downsampling():
                 '--n-projs {4:d} '+
                 '--output-parameters {5:s}  '+
                 '--verbose').format(vol_ref_name, vol_rot_name, 
-                                    vol_aligned_refine_name, sz_ds, 30,
+                                    vol_aligned_refine_name, sz_ds, 50,
                                     params_refine_name)                                
                 
                 # Run alignment command
@@ -550,7 +553,8 @@ def results_varying_Nprojs():
     working_dir = './varying_nprojs'
     data_dir = './data'
     results = []    
-    n_projs_list = [3, 10, 15, 20, 25, 30, 100]  # Number of reference projections
+    # n_projs_list = [3, 10, 15, 20, 25, 30, 100]  # Number of reference projections
+    n_projs_list = [10, 30, 50, 70, 90]  
         
     for n_projs in n_projs_list:
         
@@ -788,7 +792,7 @@ def results_comparison_to_eman():
                 '--output-parameters {5:s} --no-refine '+
                 '--verbose').format(fnames_dict['ref_copy'], 
                                     fnames_dict['transformed'],
-                                    fnames_dict['aligned_norefine'], sz_ds, 30,
+                                    fnames_dict['aligned_norefine'], sz_ds, 50,
                                     fnames_dict['output_norefine'])
                                         
             emalign_script.write("start=`date +%s`\n")
@@ -806,7 +810,7 @@ def results_comparison_to_eman():
                 '--output-parameters {5:s} '+
                 '--verbose').format(fnames_dict['ref_copy'], fnames_dict['transformed'],
                                     fnames_dict['aligned_refine'], sz_ds, 
-                                    30, fnames_dict['output_refine'])
+                                    50, fnames_dict['output_refine'])
                                     
             emalign_script.write("start=`date +%s`\n")
             emalign_script.write(align_cmd+"\n")
@@ -906,8 +910,8 @@ def results_comparison_to_eman():
 #%%
 def results_noise():
 
-    disable_preprocess = True
-    disable_analysis = False
+    disable_preprocess = False
+    disable_analysis = True
     
     if not disable_preprocess:
         # Create EMAN script file
@@ -1008,7 +1012,7 @@ def results_noise():
             # Run alignment without refiment                    
             align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
                 '--output-vol {2:s} --downsample {3:d} '+
-                ' --n-projs 500 ' + 
+                ' --n-projs 50 ' + 
                 '--output-parameters {4:s} --no-refine '+
                 '--verbose').format(fnames_dict['ref_noisy'], fnames_dict['transformed'],
                                     fnames_dict['aligned_norefine'], sz_ds, 
@@ -1026,7 +1030,7 @@ def results_noise():
             # Run alignment with refiment
             align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
                 '--output-vol {2:s} --downsample {3:d} '+
-                ' --n-projs 500 ' + 
+                ' --n-projs 50 ' + 
                 '--output-parameters {4:s} '+
                 '--verbose').format(fnames_dict['ref_noisy'], fnames_dict['transformed'],
                                     fnames_dict['aligned_refine'], sz_ds, 
@@ -1174,9 +1178,9 @@ def test_stability():
 
 #download_data('./data')
 
-results = results_varying_downsampling()
+#results = results_varying_downsampling()
 #results_varying_Nprojs()
-#results_comparison_to_eman()
+results_comparison_to_eman()
 #results_noise()
 
 #test_stability()
