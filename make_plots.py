@@ -170,6 +170,7 @@ df = pd.read_excel("results_varying_nprojs.xlsx")
 err_norefine = []
 err_refine = []
 n_projs_list = np.sort(np.unique(df["n_projs"]))
+#n_projs_list = [30, 50, 70, 90]
 for n_projs in n_projs_list:
     data = df.loc[df['n_projs']==n_projs,
                   ['err_ang1_norefine', 'err_ang2_norefine']]
@@ -210,7 +211,7 @@ plt.show()
 # Show timing vs n_projs with and without refinement
 
 df = pd.read_excel("results_varying_nprojs.xlsx")
-n_projs_list = [10, 15, 20, 25, 30, 100]
+n_projs_list = np.sort(np.unique(df["n_projs"]))
 markers = ['o', 's', 'p', 'h', 'v', 'x', 'd', '.']
 marker_idx = 0
 
@@ -261,9 +262,9 @@ br1 = 100*np.arange(len(err_refine))
 br2 = [x + barWidth for x in br1]
  
 # Make the plot
-plt.bar(br1, err_refine, fill='False', hatch='///', width = barWidth,
-        edgecolor ='grey', label ='emalign')
-plt.bar(br2, err_eman, fill='False', hatch='...', width = barWidth,
+plt.bar(br1, err_refine, fill='False', hatch='////', width = barWidth,
+        edgecolor ='grey', label ='emalign R')
+plt.bar(br2, err_eman, fill='False', hatch='....', width = barWidth,
         edgecolor ='grey', label ='eman')
 
 # Adding Xticks
@@ -275,29 +276,72 @@ plt.xticks([r + barWidth for r in br1.ravel()],
  
 plt.legend()
 plt.subplots_adjust(wspace=0.4)
-plt.savefig('eman_comparison_accuracy.png', dpi=300)
+plt.savefig(make_full_figname('eman_comparison_accuracy.png'), dpi=300)
 plt.show()
 
 
 #%%
 # Figure 8:
+# Same as 7, but include norefine
+
+df = pd.read_excel("results_eman.xlsx")
+
+barWidth = 15
+ 
+err_norefine = (df["err_ang1_norefine"]+df["err_ang2_norefine"]).tolist()
+err_refine = (df["err_ang1_refine"]+df["err_ang2_refine"]).tolist()
+err_eman = (df["err_ang1_eman"]+df["err_ang2_eman"]).tolist()
+ 
+# Set position of bar on X axis
+br1 = 100*np.arange(len(err_refine))
+br2 = [x + barWidth for x in br1]
+br3 = [x + 2*barWidth for x in br1]
+ 
+# Make the plot
+plt.bar(br1, err_norefine, fill='False', hatch='//', width = barWidth,
+        edgecolor ='grey', label ='emalign NR')
+plt.bar(br2, err_refine, fill='False', hatch='////', width = barWidth,
+        edgecolor ='grey', label ='emalign R')
+plt.bar(br3, err_eman, fill='False', hatch='....', width = barWidth,
+        edgecolor ='grey', label ='eman')
+
+# Adding Xticks
+#plt.xlabel('Dataset', fontweight ='bold', fontsize = 15)
+plt.xlabel("EMDID")
+plt.ylabel('$e_{1}+e_{2}$ (degrees)', fontsize = 8)
+plt.xticks([r + barWidth for r in br1.ravel()],
+        ["{0:04d}".format(x) for x in df["emdid"]], fontsize = 6)
+ 
+plt.legend()
+plt.subplots_adjust(wspace=0.4)
+plt.savefig(make_full_figname('eman_comparison_accuracy_norefine.png'), dpi=300)
+plt.show()
+
+
+#%%
+# Figure 9:
 # Timing of eman vs emalign with refinement
 
 df = pd.read_excel("results_eman.xlsx")
 
 barWidth = 15
  
+timing_norefine = (df["t_norefine"]).tolist()
 timing_refine = (df["t_refine"]).tolist()
 timing_eman = (df["t_eman"]).tolist()
  
 # Set position of bar on X axis
 br1 = 100*np.arange(len(timing_refine))
 br2 = [x + barWidth for x in br1]
+br3 = [x + 2*barWidth for x in br1]
+
  
 # Make the plot
-plt.bar(br1, timing_refine, fill='False', hatch='///', width = barWidth,
-        edgecolor ='grey', label ='emalign')
-plt.bar(br2, timing_eman, fill='False', hatch='...', width = barWidth,
+plt.bar(br1, timing_norefine, fill='False', hatch='///', width = barWidth,
+        edgecolor ='grey', label ='emalign NR')
+plt.bar(br2, timing_refine, fill='False', hatch='///', width = barWidth,
+        edgecolor ='grey', label ='emalign R')
+plt.bar(br3, timing_eman, fill='False', hatch='...', width = barWidth,
         edgecolor ='grey', label ='eman')
 
 # Adding Xticks
@@ -308,6 +352,32 @@ plt.xticks([r + barWidth for r in br1.ravel()],
         ["{0:04d}".format(x) for x in df["emdid"]], fontsize = 6)
  
 plt.legend()
-plt.savefig('eman_comparison_timing.png', dpi=300)
+plt.savefig(make_full_figname('eman_comparison_timing.png'), dpi=300)
 plt.show()
 
+#%% Create a table summarizing the comparison to EMAN
+
+df = pd.read_excel("results_eman.xlsx")
+
+mean_err_norefine = (df["err_ang1_norefine"]+df["err_ang2_norefine"]).mean()
+std_err_norefine = (df["err_ang1_norefine"]+df["err_ang2_norefine"]).std()
+mean_err_refine = (df["err_ang1_refine"]+df["err_ang2_refine"]).mean()
+std_err_refine = (df["err_ang1_refine"]+df["err_ang2_refine"]).std()
+mean_err_eman = (df["err_ang1_eman"]+df["err_ang2_eman"]).mean()
+std_err_eman = (df["err_ang1_eman"]+df["err_ang2_eman"]).std()
+
+# Sppedup
+speedup_norefine = ((df["t_eman"]-df["t_norefine"])/df["t_eman"]).mean()
+speedup_refine = ((df["t_refine"]-df["t_eman"])/df["t_refine"]).mean()
+
+print("norefine mean error = {0:7.4f}    std = {1:7.4f}".format(
+    mean_err_norefine,std_err_norefine))
+
+print("refine mean error = {0:7.4f}    std = {1:7.4f}".format(
+    mean_err_refine,std_err_refine))
+
+print("eman mean error = {0:7.4f}    std = {1:7.4f}".format(
+    mean_err_eman,std_err_eman))
+
+print("Norefine is faster by eman in {0:7.4f} percent".format(speedup_norefine*100))
+print("Refine is slower than eman in {0:7.4f} percent".format(speedup_refine*100))
