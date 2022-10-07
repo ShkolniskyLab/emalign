@@ -42,7 +42,7 @@ test_densities = [
     ['D3',    '20016',    0.83],
     ['D4',    '22462',    0.844],
     ['D7',     '9233',    0.66159993],
-    ['D11',   '21140',    1.06],
+    #['D11',   '21140',    1.06],
     ['T',      '4179',    0.97],
     ['O',     '22658',    0.502],
     ['I',     '24494',    1.06 ]
@@ -53,9 +53,17 @@ test_densities = [
 emalign_cmd = shutil. which('emalign')
 
 # Setup logger
-logging.basicConfig(level=logging.DEBUG,
-format='%(asctime)s %(levelname)s %(message)s')
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger()
+
+# Save both to file and console
+fh = logging.FileHandler('./emalign.log')
+fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+logger.addHandler(fh)
 
 
 def init_random_state():
@@ -317,18 +325,23 @@ def measure_error(R,Rest,symmetry):
             
     tmp_R = scipy.spatial.transform.Rotation.from_matrix(R.transpose())
     tmp_rotvec = tmp_R.as_rotvec()            
-    axis_ref = tmp_rotvec/np.linalg.norm(tmp_rotvec);
-    angle_ref = np.linalg.norm(tmp_rotvec);
-
+    axis_ref = tmp_rotvec/np.linalg.norm(tmp_rotvec)
+    angle_ref = np.linalg.norm(tmp_rotvec)
 
     tmp_R = scipy.spatial.transform.Rotation.from_matrix(g_est @ Rest.transpose())
     tmp_rotvec = tmp_R.as_rotvec()            
-    axis_est = tmp_rotvec/np.linalg.norm(tmp_rotvec);
-    angle_est = np.linalg.norm(tmp_rotvec);
-
-
+    axis_est = tmp_rotvec/np.linalg.norm(tmp_rotvec)
+    angle_est = np.linalg.norm(tmp_rotvec)
+    
     err_ang1 = math.acos(np.dot(axis_ref,axis_est))/math.pi*180
-    err_ang2 = abs(angle_ref - angle_est)/math.pi*180
+    
+    if err_ang1 > 90:
+        axis_est = -axis_est
+        angle_est = 2*np.pi - angle_est
+        err_ang1 = math.acos(np.dot(axis_ref,axis_est))/math.pi*180
+    
+    err_ang2 = abs((np.arcsin(abs(np.exp(complex(0,1)*angle_ref)
+                -np.exp(complex(0,1)*angle_est))/2)*2)*180/np.pi)
 
     return err_ang1, err_ang2
 
@@ -351,7 +364,8 @@ def run_cmd(cmd):
     t_start = time.time()
     
     # Run without printouts
-    subprocess.run(shlex.split(cmd))  
+    with open('emalign.log', "a") as outfile:
+        subprocess.run(shlex.split(cmd), stdout=outfile, stderr=outfile)  
     
     # Run with printouts
     # p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, 
@@ -382,9 +396,11 @@ def run_cmd(cmd):
 def results_varying_downsampling():
     init_random_state()
     
-    working_dir = './varying_downsampling/'    
+    working_dir = './varying_downsampling'
+    data_dir = './data/'    
     results = []    
     sizes = [16, 32, 64, 128]  # Sizes of downsampled volumes
+    #sizes = [16, 32, 64]  # Sizes of downsampled volumes
         
     for sz_ds in sizes:
         
@@ -397,7 +413,7 @@ def results_varying_downsampling():
             test_data = test_densities[testidx]
             symmetry = test_data[0]
             emdid = test_data[1]        
-            fnames_dict = get_test_filenames(working_dir, emdid)
+            fnames_dict = get_test_filenames(data_dir, emdid)
     
             logger.info('Test %d/%d %s  (EMD%s)',testidx+1,
                         len(test_densities),symmetry,emdid)
@@ -411,6 +427,7 @@ def results_varying_downsampling():
             # Generate a random rotation
             R = np.squeeze(src.rand_rots.rand_rots(1))
             assert abs(np.linalg.det(R)-1) <1.0e-8
+            logger.info("R_ref = \n"+str(R))
 
             # Rotate the reference volume by the random rotation
             vol_transformed = src.fastrotate3d.fastrotate3d(vol,R)
@@ -446,9 +463,10 @@ def results_varying_downsampling():
                 ####
                 align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
                 '--output-vol {2:s} --downsample {3:d} '+
-                '--output-parameters {4:s} --no-refine '+
+                '--n-projs {4:d} '+
+                '--output-parameters {5:s} --no-refine '+
                 '--verbose').format(vol_ref_name, vol_rot_name,
-                                    vol_aligned_norefine_name, sz_ds, 
+                                    vol_aligned_norefine_name, sz_ds, 50,
                                     params_norefine_name)                         
            
                                     
@@ -469,9 +487,10 @@ def results_varying_downsampling():
                 ####
                 align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
                 '--output-vol {2:s} --downsample {3:d} '+
-                '--output-parameters {4:s}  '+
+                '--n-projs {4:d} '+
+                '--output-parameters {5:s}  '+
                 '--verbose').format(vol_ref_name, vol_rot_name, 
-                                    vol_aligned_refine_name, sz_ds, 
+                                    vol_aligned_refine_name, sz_ds, 50,
                                     params_refine_name)                                
                 
                 # Run alignment command
@@ -491,7 +510,7 @@ def results_varying_downsampling():
                                t_norefine, err_ang1_refine, err_ang2_refine, 
                                t_refine]
                                     
-                print(test_result)
+                logger.info(test_result)
                 results.append(test_result)
                 # sz_ds = sz_ds_sav  # Restore current downsampling
                 
@@ -514,6 +533,13 @@ def results_varying_downsampling():
     
                 if os.path.exists(params_refine_name):
                     os.remove(params_refine_name)
+    
+    df = pd.DataFrame(results, columns = ['symmetry','emdid','size_orig', 
+                'size_ds','err_ang1_norefine','err_ang2_norefine',
+                't_norefine','err_ang1_refine','err_ang2_refine','t_refine'])
+    df.to_csv("results_varying_downsampling.txt")
+    df.to_excel("results_varying_downsampling.xlsx")
+
 
     return results
 
@@ -525,8 +551,10 @@ def results_varying_Nprojs():
     
     
     working_dir = './varying_nprojs'
+    data_dir = './data'
     results = []    
-    n_projs_list = [3, 10, 15, 20, 25, 30, 100]  # Number of reference projections
+    # n_projs_list = [3, 10, 15, 20, 25, 30, 100]  # Number of reference projections
+    n_projs_list = [10, 30, 50, 70, 90]  
         
     for n_projs in n_projs_list:
         
@@ -539,12 +567,11 @@ def results_varying_Nprojs():
             test_data = test_densities[testidx]
             symmetry = test_data[0]
             emdid = test_data[1]        
-            fnames_dict = get_test_filenames(working_dir, emdid)
-    
+            fnames_dict = get_test_filenames(data_dir, emdid)
             logger.info('Test %d/%d %s  (EMD%s)',testidx+1,
                         len(test_densities),symmetry,emdid)
             
-            vol = src.read_write.read_mrc(fnames_dict['ref'])            
+            vol = src.read_write.read_mrc(fnames_dict["ref"])            
             #vol = src.common_finufft.cryo_downsample(vol,[64,64,64])
             
             
@@ -765,7 +792,7 @@ def results_comparison_to_eman():
                 '--output-parameters {5:s} --no-refine '+
                 '--verbose').format(fnames_dict['ref_copy'], 
                                     fnames_dict['transformed'],
-                                    fnames_dict['aligned_norefine'], sz_ds, 15,
+                                    fnames_dict['aligned_norefine'], sz_ds, 50,
                                     fnames_dict['output_norefine'])
                                         
             emalign_script.write("start=`date +%s`\n")
@@ -783,7 +810,7 @@ def results_comparison_to_eman():
                 '--output-parameters {5:s} '+
                 '--verbose').format(fnames_dict['ref_copy'], fnames_dict['transformed'],
                                     fnames_dict['aligned_refine'], sz_ds, 
-                                    15, fnames_dict['output_refine'])
+                                    50, fnames_dict['output_refine'])
                                     
             emalign_script.write("start=`date +%s`\n")
             emalign_script.write(align_cmd+"\n")
@@ -883,8 +910,8 @@ def results_comparison_to_eman():
 #%%
 def results_noise():
 
-    disable_preprocess = True
-    disable_analysis = False
+    disable_preprocess = False
+    disable_analysis = True
     
     if not disable_preprocess:
         # Create EMAN script file
@@ -985,7 +1012,7 @@ def results_noise():
             # Run alignment without refiment                    
             align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
                 '--output-vol {2:s} --downsample {3:d} '+
-                ' --n-projs 500 ' + 
+                ' --n-projs 50 ' + 
                 '--output-parameters {4:s} --no-refine '+
                 '--verbose').format(fnames_dict['ref_noisy'], fnames_dict['transformed'],
                                     fnames_dict['aligned_norefine'], sz_ds, 
@@ -1003,7 +1030,7 @@ def results_noise():
             # Run alignment with refiment
             align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
                 '--output-vol {2:s} --downsample {3:d} '+
-                ' --n-projs 500 ' + 
+                ' --n-projs 50 ' + 
                 '--output-parameters {4:s} '+
                 '--verbose').format(fnames_dict['ref_noisy'], fnames_dict['transformed'],
                                     fnames_dict['aligned_refine'], sz_ds, 
@@ -1147,11 +1174,13 @@ def test_stability():
 
     from src.AlignVolumes3d import AlignVolumes
     bestR, bestdx, reflect, vol2aligned, bestcorr = AlignVolumes(vol, vol_transformed, verbose = 1 , opt = opt)
-
+    print(np.linalg.norm(bestR.transpose()-R))  #Should be about 1.0e-3
 
 #download_data('./data')
 
-# results = results_varying_downsampling()
-# results_varying_Nprojs()
-# results_comparison_to_eman()
-# results_noise()
+#results = results_varying_downsampling()
+#results_varying_Nprojs()
+results_comparison_to_eman()
+#results_noise()
+
+#test_stability()

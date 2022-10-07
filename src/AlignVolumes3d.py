@@ -216,7 +216,7 @@ def refine3DmatchBFGS(vol1, vol2, R1, estdx):
     [psi, theta, phi] = R1.as_euler('xyz')
     X0 = np.array([psi, theta, phi, estdx[0], estdx[1], estdx[2]]).astype('float64')
     # BFGS optimization:
-    res = minimize(eval3Dmatchaux, X0, args=(vol1, vol2), method='BFGS', tol=1e-2,
+    res = minimize(eval3Dmatchaux, X0, args=(vol1, vol2), method='BFGS', tol=1e-3,
                    options={'gtol': 1e-3, 'disp': False})
     X = res.x
     psi = X[0];

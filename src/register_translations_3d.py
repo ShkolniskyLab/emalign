@@ -28,7 +28,7 @@ def refine3DshiftBFGS(vol1, vol2, estdx):
     # Create initial guess vector
     X0 = np.array([estdx[0].real, estdx[1].real, estdx[2].real]).astype('float64')
     # BFGS optimization:
-    res = minimize(eval3Dshift, X0, args=(vol1, vol2), method='BFGS', tol=1e-1,
+    res = minimize(eval3Dshift, X0, args=(vol1, vol2), method='BFGS', tol=1e-2,
                    options={'gtol': 1e-2, 'disp': False})
     X = res.x
     estdx = np.array([X[0], X[1], X[2]])
