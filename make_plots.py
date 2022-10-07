@@ -274,6 +274,9 @@ plt.ylabel('$e_{1}+e_{2}$ (degrees)', fontsize = 8)
 plt.xticks([r + barWidth for r in br1.ravel()],
         ["{0:04d}".format(x) for x in df["emdid"]], fontsize = 6)
  
+plt.minorticks_on()
+plt.grid(visible=True, which='major', color='k', linestyle='-', linewidth=0.4)
+plt.grid(visible=True, which='minor', color='k', linestyle='--', linewidth=0.2)
 plt.legend()
 plt.subplots_adjust(wspace=0.4)
 plt.savefig(make_full_figname('eman_comparison_accuracy.png'), dpi=300)
@@ -312,6 +315,9 @@ plt.ylabel('$e_{1}+e_{2}$ (degrees)', fontsize = 8)
 plt.xticks([r + barWidth for r in br1.ravel()],
         ["{0:04d}".format(x) for x in df["emdid"]], fontsize = 6)
  
+plt.minorticks_on()
+plt.grid(visible=True, which='major', color='k', linestyle='-', linewidth=0.4)
+plt.grid(visible=True, which='minor', color='k', linestyle='--', linewidth=0.2)
 plt.legend()
 plt.subplots_adjust(wspace=0.4)
 plt.savefig(make_full_figname('eman_comparison_accuracy_norefine.png'), dpi=300)
@@ -350,7 +356,10 @@ plt.xlabel("EMDID")
 plt.ylabel('Time (sec)', fontsize = 8)
 plt.xticks([r + barWidth for r in br1.ravel()],
         ["{0:04d}".format(x) for x in df["emdid"]], fontsize = 6)
- 
+
+plt.minorticks_on()
+plt.grid(visible=True, which='major', color='k', linestyle='-', linewidth=0.4)
+plt.grid(visible=True, which='minor', color='k', linestyle='--', linewidth=0.2)
 plt.legend()
 plt.savefig(make_full_figname('eman_comparison_timing.png'), dpi=300)
 plt.show()
