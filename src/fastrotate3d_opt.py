@@ -13,6 +13,50 @@ import scipy.spatial.transform
 from numpy.fft import fft, ifft
 import pyfftw
 
+class fftw_data_class:
+    def __init__(self, n, num_threads=1):
+        n2 = n//2 + 1
+        self.in_array_f_0 = pyfftw.empty_aligned((n,n), dtype=np.float64)
+        self.out_array_f_0 = pyfftw.empty_aligned((n2,n), dtype=np.complex128)
+        self.in_array_f_1 = pyfftw.empty_aligned((n,n), dtype=np.float64)
+        self.out_array_f_1 = pyfftw.empty_aligned((n,n2), dtype=np.complex128)
+        self.in_array_b_0 = pyfftw.empty_aligned((n2,n), dtype=np.complex128)
+        self.out_array_b_0 = pyfftw.empty_aligned((n,n), dtype=np.float64)
+        self.in_array_b_1 = pyfftw.empty_aligned((n,n2), dtype=np.complex128)
+        self.out_array_b_1 = pyfftw.empty_aligned((n,n), dtype=np.float64)
+        
+        self.fftw_object_0 = pyfftw.FFTW(self.in_array_f_0,
+                          self.out_array_f_0,
+                          direction="FFTW_FORWARD",
+                          flags=("FFTW_ESTIMATE", ),
+                          axes=(0,),
+                          threads=num_threads)
+
+        self.fftw_object_1 = pyfftw.FFTW(self.in_array_f_1,
+                          self.out_array_f_1,
+                          direction="FFTW_FORWARD",
+                          flags=("FFTW_ESTIMATE", ),
+                          axes=(1,),
+                          threads=num_threads)
+
+        
+        self.ifftw_object_0 = pyfftw.FFTW(self.in_array_b_0,
+                          self.out_array_b_0,
+                          direction="FFTW_BACKWARD",
+                          flags=("FFTW_ESTIMATE", ),
+                          axes=(0,),
+                          normalise_idft=True,
+                          threads=num_threads)
+        
+        self.ifftw_object_1 = pyfftw.FFTW(self.in_array_b_1,
+                          self.out_array_b_1,
+                          direction="FFTW_BACKWARD",
+                          flags=("FFTW_ESTIMATE", ),
+                          axes=(1,),
+                          normalise_idft=True,
+                          threads=num_threads)
+
+
 #%%
 def fastrotate3d(vol,Rot):
     #FASTROTATE3D Rotate a 3D volume by a given rotation matrix.
@@ -114,7 +158,7 @@ def fastrotateprecomp(SzX,SzY,phi):
     return M
 
 #%%
-def fastrotate(vol,phi,M=None, fftw_object=None, ifftw_object=None):
+def fastrotate(vol,phi,M=None, fftw_data=None):
     # 3-step image rotation by shearing.
     # This is an optimized version of fastrotate_ref.
     # 
@@ -131,41 +175,9 @@ def fastrotate(vol,phi,M=None, fftw_object=None, ifftw_object=None):
     # Output parameters:
     #  OUTPUT   The rotated image.
     
-    if fftw_object is None:
-        in_array = pyfftw.empty_aligned(vol.shape[0:2], dtype=np.complex128)
-        out_array = pyfftw.empty_aligned(vol.shape[0:2], dtype=np.complex128)
-        num_threads = 1
-        
-        fftw_object_0 = pyfftw.FFTW(in_array,
-                          out_array,
-                          direction="FFTW_FORWARD",
-                          flags=("FFTW_ESTIMATE", ),
-                          axes=(0,),
-                          threads=num_threads)
-
-        fftw_object_1 = pyfftw.FFTW(in_array,
-                          out_array,
-                          direction="FFTW_FORWARD",
-                          flags=("FFTW_ESTIMATE", ),
-                          axes=(1,),
-                          threads=num_threads)
-
-        
-        ifftw_object_0 = pyfftw.FFTW(in_array,
-                          out_array,
-                          direction="FFTW_BACKWARD",
-                          flags=("FFTW_ESTIMATE", ),
-                          axes=(0,),
-                          normalise_idft=True,
-                          threads=num_threads)
-        
-        ifftw_object_1 = pyfftw.FFTW(in_array,
-                          out_array,
-                          direction="FFTW_BACKWARD",
-                          flags=("FFTW_ESTIMATE", ),
-                          axes=(1,),
-                          normalise_idft=True,
-                          threads=num_threads)
+    if fftw_data is None:
+        n = vol.shape[0] 
+        fftw_data = fftw_data_class(n)
     
     SzX, SzY, SzZ = vol.shape
     #SzX = np.size(vol,0) 
@@ -177,7 +189,11 @@ def fastrotate(vol,phi,M=None, fftw_object=None, ifftw_object=None):
     My = M.My 
     mult90 = M.mult90
     vol_out = np.zeros((SzX,SzY,SzZ))
-    spinput = np.zeros(vol.shape[0:2],dtype=np.complex128)
+
+    n2 = n//2 + 1
+    spinput_0 = np.zeros((n2,n),dtype=np.complex128)
+    spinput_1 = np.zeros((n,n2),dtype=np.complex128)
+    
     
     for k in range(SzZ):      
         # Rotate by multiples of 90 degrees.
@@ -185,20 +201,17 @@ def fastrotate(vol,phi,M=None, fftw_object=None, ifftw_object=None):
         elif mult90 == 2: vol[:,:,k] = rot180(vol[:,:,k])
         elif mult90 == 3: vol[:,:,k] = rot270(vol[:,:,k])
         elif mult90 != 0: TypeError('Invalid value for mult90')
-    
-    
+        
         # Old code:
         #spinput = fft(vol[:,:,k],n=None,axis=1)
         #spinput = spinput*My
         #vol_out[:,:,k] = np.real(ifft(spinput,n=None,axis=1))
 
-        in_array[:,:] = vol[:,:,k]
-        out_array = fftw_object_1(in_array)
-        spinput[:,:] = out_array[:,:]
-        spinput = spinput*My
-        in_array[:,:] = spinput[:,:]
-        out_array = ifftw_object_1(in_array)
-        vol_out[:,:,k] = np.real(out_array[:,:])
+        fftw_data.in_array_f_1[:,:] = vol[:,:,k]
+        spinput_1[:,:] = fftw_data.fftw_object_1(fftw_data.in_array_f_1)
+        spinput_1 = spinput_1*My[:,0:n2]
+        fftw_data.in_array_b_1[:,:] = spinput_1[:,:]
+        vol_out[:,:,k] = fftw_data.ifftw_object_1(fftw_data.in_array_b_1)
         
 
         # Old code:
@@ -206,13 +219,11 @@ def fastrotate(vol,phi,M=None, fftw_object=None, ifftw_object=None):
         #spinput = spinput*Mx
         #vol_out[:,:,k] = np.real(ifft(spinput,n=None,axis=0))
 
-        in_array[:,:] = vol_out[:,:,k]
-        out_array = fftw_object_0(in_array)
-        spinput[:,:] = out_array[:,:]
-        spinput = spinput*Mx
-        in_array[:,:] = spinput[:,:]
-        out_array = ifftw_object_0(in_array)
-        vol_out[:,:,k] = np.real(out_array[:,:])
+        fftw_data.in_array_f_0[:,:] = vol_out[:,:,k]
+        spinput_0[:,:] = fftw_data.fftw_object_0(fftw_data.in_array_f_0)
+        spinput_0 = spinput_0*Mx[0:n2,:]
+        fftw_data.in_array_b_0[:,:] = spinput_0[:,:]
+        vol_out[:,:,k] = fftw_data.ifftw_object_0(fftw_data.in_array_b_0)
         
                 
         # Old code:
@@ -220,13 +231,11 @@ def fastrotate(vol,phi,M=None, fftw_object=None, ifftw_object=None):
         #spinput = spinput*My
         #vol_out[:,:,k] = np.real(ifft(spinput,n=None,axis=1))
         
-        in_array[:,:] = vol_out[:,:,k]
-        out_array = fftw_object_1(in_array)
-        spinput[:,:] = out_array[:,:]
-        spinput = spinput*My
-        in_array[:,:] = spinput[:,:]
-        out_array = ifftw_object_1(in_array)
-        vol_out[:,:,k] = np.real(out_array[:,:])
+        fftw_data.in_array_f_1[:,:] = vol_out[:,:,k]
+        spinput_1[:,:] = fftw_data.fftw_object_1(fftw_data.in_array_f_1)
+        spinput_1 = spinput_1*My[:,0:n2]
+        fftw_data.in_array_b_1[:,:] = spinput_1[:,:]
+        vol_out[:,:,k] = fftw_data.ifftw_object_1(fftw_data.in_array_b_1)
         
     return vol_out 
    
