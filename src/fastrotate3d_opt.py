@@ -188,7 +188,7 @@ def fastrotate(im,phi,M=None, fftw_data=None):
     if fftw_data is None:
         fftw_data = fftw_data_class(im)
     
-    im = im.copy()  # Create a copy of the input the prevent changing the 
+    im_out = im.copy()  # Create a copy of the input the prevent changing the 
                       # calling object
     SzX, SzY = im.shape
 
@@ -197,7 +197,6 @@ def fastrotate(im,phi,M=None, fftw_data=None):
     Mx = M.Mx
     My = M.My 
     mult90 = M.mult90
-    im_out = np.zeros((SzX,SzY))
 
     n = im.shape[0]
     n2 = n//2 + 1
@@ -206,9 +205,9 @@ def fastrotate(im,phi,M=None, fftw_data=None):
     
     
     # Rotate by multiples of 90 degrees.
-    if mult90 == 1: im = rot90(im)  
-    elif mult90 == 2: im = rot180(im)
-    elif mult90 == 3: im = rot270(im)
+    if mult90 == 1: im_out = rot90(im_out)  
+    elif mult90 == 2: im_out = rot180(im_out)
+    elif mult90 == 3: im_out = rot270(im_out)
     elif mult90 != 0: TypeError('Invalid value for mult90')
         
     # Old code:
@@ -216,7 +215,7 @@ def fastrotate(im,phi,M=None, fftw_data=None):
     #spinput = spinput*My
     #vol_out[:,:,k] = np.real(ifft(spinput,n=None,axis=1))
 
-    fftw_data.in_array_f_1[:,:] = im
+    fftw_data.in_array_f_1[:,:] = im_out
     spinput_1[:,:] = fftw_data.fftw_object_1(fftw_data.in_array_f_1)
     spinput_1 = spinput_1*My[:,0:n2]
     fftw_data.in_array_b_1[:,:] = spinput_1[:,:]
