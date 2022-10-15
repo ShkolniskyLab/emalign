@@ -75,10 +75,14 @@ def fastrotate3d(vol,Rot):
     psid = psi*180/np.pi
     thetad = theta*180/np.pi 
     phid = phi*180/np.pi
+
+
+    n = vol.shape[0]
+    fftw_data = fftw_data_class(n,2)
     
-    tmp = fastrotate3x(vol,psid)
-    tmp = fastrotate3y(tmp,thetad)
-    vol_out = fastrotate3z(tmp,phid)
+    tmp = fastrotate3x(vol,psid,fftw_data)
+    tmp = fastrotate3y(tmp,thetad,fftw_data)
+    vol_out = fastrotate3z(tmp,phid,fftw_data)
     return vol_out
 
 #%%
@@ -190,6 +194,7 @@ def fastrotate(vol,phi,M=None, fftw_data=None):
     mult90 = M.mult90
     vol_out = np.zeros((SzX,SzY,SzZ))
 
+    n = vol.shape[0]
     n2 = n//2 + 1
     spinput_0 = np.zeros((n2,n),dtype=np.complex128)
     spinput_1 = np.zeros((n,n2),dtype=np.complex128)
@@ -265,7 +270,7 @@ def rot270(A):
     return B
 
 #%%
-def fastrotate3x(vol,phi):
+def fastrotate3x(vol,phi,fftw_data=None):
     #FASTROTATE3X Rotate a 3D volume around the x-axis.
     # Input parameters:
     #  INPUT    Volume to rotate, can be odd or even. 
@@ -282,18 +287,23 @@ def fastrotate3x(vol,phi):
     #
     #   M=fastrotateprecomp(size(vol,2),size(vol,3),20);
     #   rvol=fastrotate(vol,[],M);
+
+    if fftw_data is None:
+        n = vol.shape[0] 
+        fftw_data = fftw_data_class(n)
+
     SzX = np.size(vol,0); SzY = np.size(vol,1); SzZ = np.size(vol,2)  
     # Precompte M
     M = fastrotateprecomp(SzY,SzZ,phi)    
     vol_out = np.zeros((SzX,SzY,SzZ),dtype=float)
     for k in range(SzX):
         im = (np.squeeze(vol[:,k,:]).reshape((SzX,SzZ,1))).copy()
-        rim = fastrotate(im,[],M)
+        rim = fastrotate(im,[],M,fftw_data)
         vol_out[:,k,:] = rim.reshape((SzX,SzZ))
     return vol_out
 
 #%%
-def fastrotate3y(vol,phi):
+def fastrotate3y(vol,phi,fftw_data=None):
     #FASTROTATE3X Rotate a 3D volume around the x-axis.
     # Input parameters:
     #  INPUT    Volume to rotate, can be odd or even. 
@@ -310,18 +320,23 @@ def fastrotate3y(vol,phi):
     #
     #   M=fastrotateprecomp(size(vol,2),size(vol,3),20);
     #   rvol=fastrotate(vol,[],M);
+
+    if fftw_data is None:
+        n = vol.shape[0] 
+        fftw_data = fftw_data_class(n)
+
     SzX = np.size(vol,0); SzY = np.size(vol,1); SzZ = np.size(vol,2)
     # Precompte M
-    M = fastrotateprecomp(SzX,SzY,-phi)    
+    M = fastrotateprecomp(SzX,SzY,-phi)
     vol_out = np.zeros((SzX,SzY,SzZ),dtype=float)
     for k in range(SzY):
         im = (np.squeeze(vol[k,:,:]).reshape((SzY,SzZ,1))).copy()
-        rim = fastrotate(im,[],M)
+        rim = fastrotate(im,[],M,fftw_data)
         vol_out[k,:,:] = rim.reshape((SzY,SzZ))
     return vol_out
 
 #%%
-def fastrotate3z(vol,phi):
+def fastrotate3z(vol,phi,fftw_data=None):
     #FASTROTATE3X Rotate a 3D volume around the x-axis.
     # Input parameters:
     #  INPUT    Volume to rotate, can be odd or even. 
@@ -338,13 +353,18 @@ def fastrotate3z(vol,phi):
     #
     #   M=fastrotateprecomp(size(vol,2),size(vol,3),20);
     #   rvol=fastrotate(vol,[],M);
+    
+    if fftw_data is None:
+        n = vol.shape[0] 
+        fftw_data = fftw_data_class(n)
+    
     SzX = np.size(vol,0); SzY = np.size(vol,1); SzZ = np.size(vol,2)    
     # Precompte M
     M = fastrotateprecomp(SzX,SzY,-phi)    
     vol_out = np.zeros((SzX,SzY,SzZ),dtype=float)
     for k in range(SzZ):
         im = (np.squeeze(vol[:,:,k]).reshape((SzX,SzY,1))).copy()
-        rim = fastrotate(im,[],M)
+        rim = fastrotate(im,[],M,fftw_data)
         vol_out[:,:,k] = rim.reshape((SzX,SzY))
     return vol_out
 
