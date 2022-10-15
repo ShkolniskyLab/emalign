@@ -13,16 +13,25 @@ import scipy.spatial.transform
 import pyfftw
 
 class fftw_data_class:
-    def __init__(self, n, num_threads=1):
+    def __init__(self, in_data, num_threads=1):
+        n = in_data.shape[0]
         n2 = n//2 + 1
-        self.in_array_f_0 = pyfftw.empty_aligned((n,n), dtype=np.float64)
-        self.out_array_f_0 = pyfftw.empty_aligned((n2,n), dtype=np.complex128)
-        self.in_array_f_1 = pyfftw.empty_aligned((n,n), dtype=np.float64)
-        self.out_array_f_1 = pyfftw.empty_aligned((n,n2), dtype=np.complex128)
-        self.in_array_b_0 = pyfftw.empty_aligned((n2,n), dtype=np.complex128)
-        self.out_array_b_0 = pyfftw.empty_aligned((n,n), dtype=np.float64)
-        self.in_array_b_1 = pyfftw.empty_aligned((n,n2), dtype=np.complex128)
-        self.out_array_b_1 = pyfftw.empty_aligned((n,n), dtype=np.float64)
+        
+        if in_data.dtype == np.float32:
+            real_type = np.float32
+            complex_type = np.complex64
+        else:
+            real_type = np.float64
+            complex_type = np.complex128
+        
+        self.in_array_f_0 = pyfftw.empty_aligned((n,n), dtype=real_type)
+        self.out_array_f_0 = pyfftw.empty_aligned((n2,n), dtype=complex_type)
+        self.in_array_f_1 = pyfftw.empty_aligned((n,n), dtype=real_type)
+        self.out_array_f_1 = pyfftw.empty_aligned((n,n2), dtype=complex_type)
+        self.in_array_b_0 = pyfftw.empty_aligned((n2,n), dtype=complex_type)
+        self.out_array_b_0 = pyfftw.empty_aligned((n,n), dtype=real_type)
+        self.in_array_b_1 = pyfftw.empty_aligned((n,n2), dtype=complex_type)
+        self.out_array_b_1 = pyfftw.empty_aligned((n,n), dtype=real_type)
         
         self.fftw_object_0 = pyfftw.FFTW(self.in_array_f_0,
                           self.out_array_f_0,
@@ -57,7 +66,7 @@ class fftw_data_class:
 
 
 #%%
-def fastrotate3d(vol,Rot):
+def fastrotate3d(vol,Rot,fftw_data=None):
     #FASTROTATE3D Rotate a 3D volume by a given rotation matrix.
     # Input parameters:
     #  INPUT    Volume to rotate, can be odd or even. 
@@ -68,16 +77,16 @@ def fastrotate3d(vol,Rot):
     #   Rot=rand_rots(1);
     #   rvol=fastrotate3d(vol,Rot);
     #Yoel Shkolnisky, November 2013.
+    
+    if fftw_data is None:
+        fftw_data = fftw_data_class(vol)
+
     Rot_obj = scipy.spatial.transform.Rotation.from_matrix(Rot)
     [psi,theta,phi]  = Rot_obj.as_euler('xyz')
 
     psid = psi*180/np.pi
     thetad = theta*180/np.pi 
     phid = phi*180/np.pi
-
-
-    n = vol.shape[0]
-    fftw_data = fftw_data_class(n)
     
     tmp = fastrotate3x(vol,psid,fftw_data)
     tmp = fastrotate3y(tmp,thetad,fftw_data)
@@ -177,8 +186,7 @@ def fastrotate(im,phi,M=None, fftw_data=None):
     #  im_out   The rotated image.
     
     if fftw_data is None:
-        n = im.shape[0] 
-        fftw_data = fftw_data_class(n)
+        fftw_data = fftw_data_class(im)
     
     im = im.copy()  # Create a copy of the input the prevent changing the 
                       # calling object
@@ -285,8 +293,7 @@ def fastrotate3x(vol,phi,fftw_data=None):
     #   rvol=fastrotate(vol,[],M);
 
     if fftw_data is None:
-        n = vol.shape[0] 
-        fftw_data = fftw_data_class(n)
+        fftw_data = fftw_data_class(vol)
 
     SzX = np.size(vol,0); SzY = np.size(vol,1); SzZ = np.size(vol,2)  
     # Precompte M
@@ -318,8 +325,7 @@ def fastrotate3y(vol,phi,fftw_data=None):
     #   rvol=fastrotate(vol,[],M);
 
     if fftw_data is None:
-        n = vol.shape[0] 
-        fftw_data = fftw_data_class(n)
+        fftw_data = fftw_data_class(vol)
 
     SzX = np.size(vol,0); SzY = np.size(vol,1); SzZ = np.size(vol,2)
     # Precompte M
@@ -351,8 +357,7 @@ def fastrotate3z(vol,phi,fftw_data=None):
     #   rvol=fastrotate(vol,[],M);
     
     if fftw_data is None:
-        n = vol.shape[0] 
-        fftw_data = fftw_data_class(n)
+        fftw_data = fftw_data_class(vol)
     
     SzX = np.size(vol,0); SzY = np.size(vol,1); SzZ = np.size(vol,2)    
     # Precompte M
