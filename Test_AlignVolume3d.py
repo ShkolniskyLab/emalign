@@ -11,7 +11,7 @@ from src.read_write import read_mrc
 from src.common_finufft import cryo_downsample
 from src.SymmetryGroups import genSymGroup
 from src.rand_rots import rand_rots
-from src.AlignVolumes3d_opt import AlignVolumes
+from src.AlignVolumes3d import AlignVolumes
 from src.fastrotate3d import fastrotate3d
 from src.reshift_vol import reshift_vol
 import time
@@ -28,11 +28,11 @@ np.random.seed(2021)
 #vol = read_mrc('10280_C1.mrc')
 #sym = 'C1'
 
-vol = read_mrc('9203_D3.mrc')
-sym = 'D3'
+#vol = read_mrc('9203_D3.mrc')
+#sym = 'D3'
 
-#vol = read_mrc('4179_T.mrc')
-#sym = 'T'
+vol = read_mrc('4179_T.mrc')
+sym = 'T'
 
 #vol = read_mrc('24494_I.mrc')
 #sym = 'I'

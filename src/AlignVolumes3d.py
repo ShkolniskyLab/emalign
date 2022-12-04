@@ -18,6 +18,7 @@ from src.fastrotate3d import fastrotate3d
 from src.register_translations_3d import register_translations_3d
 from src.register_translations_3d import refine3DshiftBFGS
 from src.reshift_vol import reshift_vol
+import  src.reshift_vol
 from src.SymmetryGroups import genSymGroup
 import logging
 
@@ -191,7 +192,8 @@ def fastAlignment3D(sym, vol1, vol2, n, Nprojs=30, trueR=None, G_group=None, ref
 
 
 # %%
-def eval3Dmatchaux(X, vol1, vol2):
+def eval3Dmatchaux(X, vol1, vol2, rotate_fftw_data=None, 
+                   reshift_fftw_data=None):
     psi = X[0]
     theta = X[1]
     phi = X[2]
@@ -201,9 +203,9 @@ def eval3Dmatchaux(X, vol1, vol2):
     r = R.from_euler('xyz', [psi, theta, phi], degrees=False)
     Rot = r.as_matrix()
 
-    vol2_r = fastrotate3d(vol2, Rot)
+    vol2_r = fastrotate3d(vol2, Rot,rotate_fftw_data)
 
-    vol2_rs = reshift_vol(vol2_r, np.array([dx, dy, dz]))
+    vol2_rs = reshift_vol(vol2_r, np.array([dx, dy, dz]),reshift_fftw_data)
     c = np.mean(np.corrcoef(vol1.ravel(), vol2_rs.ravel(), rowvar=False)[0, 1:]).astype('float64')
     e = (1 - c).astype('float64')
     return e
@@ -215,9 +217,12 @@ def refine3DmatchBFGS(vol1, vol2, R1, estdx):
     R1 = R.from_matrix(R1)
     [psi, theta, phi] = R1.as_euler('xyz')
     X0 = np.array([psi, theta, phi, estdx[0], estdx[1], estdx[2]]).astype('float64')
+    rotate_fftw_data = src.fastrotate3d.fftw_data_class(vol1)
+    reshift_fftw_data = src.reshift_vol.fftw_data_class(vol1)
     # BFGS optimization:
-    res = minimize(eval3Dmatchaux, X0, args=(vol1, vol2), method='BFGS', tol=1e-3,
-                options={'gtol': 1e-3, 'disp': False})
+    res = minimize(eval3Dmatchaux, X0, args=(vol1, vol2, rotate_fftw_data, 
+                reshift_fftw_data), method='BFGS', tol=1e-2,
+                options={'gtol': 1e-1, 'disp': False})
     X = res.x
     psi = X[0];
     theta = X[1];
@@ -403,9 +408,10 @@ def AlignVolumes(vol1, vol2, verbose=0, opt=None):
     if np.size(estdx_ds) != 3 or np.size(estdx_J_ds) != 3:
         raise Warning("***** Translation estimation failed *****")
     
-    # Prepare FFTW data to avoid unnecessary calaculations    
-    vol2_aligned_ds = reshift_vol(vol2_aligned_ds, estdx_ds)
-    vol2_aligned_J_ds = reshift_vol(vol2_aligned_J_ds, estdx_J_ds)
+    # Prepare FFTW data to avoid unnecessary calaculations
+    reshift_fftw_data = src.reshift_vol.fftw_data_class(vol2_aligned_ds)
+    vol2_aligned_ds = reshift_vol(vol2_aligned_ds, estdx_ds, reshift_fftw_data)
+    vol2_aligned_J_ds = reshift_vol(vol2_aligned_J_ds, estdx_J_ds, reshift_fftw_data)
     no1 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_ds.ravel(), rowvar=False)[0, 1:])
     no2 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_J_ds.ravel(), rowvar=False)[0, 1:])
     logger.debug("no1=%f",no1)
