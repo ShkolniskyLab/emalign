@@ -20,8 +20,8 @@ import shutil
 
 def gentestdata(ref_mrc_filename,transformed_mrc_filename,emdID=2660,verbose=1):
     """
-    gentestdata  generates test volumes for the function AlignVolumes in 
-    AlignVolumes3d.
+    gentestdata  generates test volumes for the function align_volumes in 
+    align_volumes_3d.
     
     This function fetchs the map file (MRC format) with the given emdID 
     (integer) from EMDB.

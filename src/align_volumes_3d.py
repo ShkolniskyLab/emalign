@@ -14,7 +14,7 @@ from scipy.spatial.transform import Rotation
 from src.common_finufft import cryo_downsample
 from src.cryo_project_itay_finufft import cryo_project
 from src.genRotationsGrid import genRotationsGrid
-from src.AlignProjection2d import AlignProjection
+from src.align_projection2d import align_projection
 from src.fastrotate3d import fastrotate3d
 from src.register_translations_3d import register_translations_3d
 from src.register_translations_3d import refine3DshiftBFGS
@@ -25,7 +25,7 @@ from src.SymmetryGroups import genSymGroup
 
 def fast_alignment_3d(sym, vol1, vol2, Nprojs=30, trueR=None, G_group=None, refrot=0, verbose=0):
     '''
-    This function does the work for AlignVolumes.
+    This function does the work for align_volumes.
     Input:
     sym- the symmetry type- 'Cn'\'Dn'\'T'\'O'\'I', where n is the the
          symmetry order (for example: 'C2').
@@ -83,9 +83,9 @@ def fast_alignment_3d(sym, vol1, vol2, Nprojs=30, trueR=None, G_group=None, refr
             trueR_tild_J[:, :, i] = J3 @ R @ J3 @ R_ref[:, :, i]
         opt.trueRots = trueR_tild
         opt.trueRots_J = trueR_tild_J
-        R_tild = AlignProjection(ref_projs, vol1, verbose, opt)  # size=(3,3,N_projs).
+        R_tild = align_projection(ref_projs, vol1, verbose, opt)  # size=(3,3,N_projs).
     else:
-        R_tild = AlignProjection(ref_projs, vol1, verbose, opt)  # size (3,3,N_projs).
+        R_tild = align_projection(ref_projs, vol1, verbose, opt)  # size (3,3,N_projs).
     # Synchronization:
     # A synchronization algorithm is used In order to revel the symmetry
     # elements of the reference projections. The relation between the volumes
@@ -251,7 +251,7 @@ def evalO(X, R_true, R_est, G):
 
 
 # %%
-def AlignVolumes(vol1, vol2, verbose=0, opt=None):
+def align_volumes(vol1, vol2, verbose=0, opt=None):
     '''
     This function aligns vol2 according to vol1
     Aligning vol2 to vol1 by finding the relative rotation, translation and

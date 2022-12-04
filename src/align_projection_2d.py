@@ -26,7 +26,7 @@ from src.genRotationsGrid import genRotationsGrid
 from numpy import linalg as LA
 
 
-def AlignProjection(projs,vol,verbose=0,opt=None):
+def align_projection(projs,vol,verbose=0,opt=None):
     '''
     This function aligns given projection in a given volume.
     This is a secondary algorithm for cryo_align_vols.
@@ -142,7 +142,7 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     Nrot = np.size(candidate_rots,2)
     logger.info('Using %i candidate rotations for the alignment', Nrot)     
     rots_ref = Rots[:,:,np.random.randint(Nrot, size=Nprojs)] 
-    #rots_ref = mat_to_npy('rots_ref_for_AlignProjection2D')
+    #rots_ref = mat_to_npy('rots_ref_for_align_projection_2d')
     
     ref_projs = cryo_project(vol, rots_ref)    
     ref_projs = np.transpose(ref_projs,(1,0,2))  

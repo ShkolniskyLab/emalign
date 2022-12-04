@@ -1172,8 +1172,8 @@ def test_stability():
     opt.downsample = 64
     opt.no_refine = False
 
-    from src.AlignVolumes3d import AlignVolumes
-    bestR, bestdx, reflect, vol2aligned, bestcorr = AlignVolumes(vol, vol_transformed, verbose = 1 , opt = opt)
+    from src.align_volumes_3d import align_volumes
+    bestR, bestdx, reflect, vol2aligned, bestcorr = align_volumes(vol, vol_transformed, verbose = 1 , opt = opt)
     print(np.linalg.norm(bestR.transpose()-R))  #Should be about 1.0e-3
 
 #download_data('./data')

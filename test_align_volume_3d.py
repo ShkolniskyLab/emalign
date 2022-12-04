@@ -12,7 +12,7 @@ from src.read_write import read_mrc
 from src.common_finufft import cryo_downsample
 from src.SymmetryGroups import genSymGroup
 from src.rand_rots import rand_rots
-from src.AlignVolumes3d import AlignVolumes
+from src.align_volumes_3d import align_volumes
 from src.fastrotate3d import fastrotate3d
 from src.reshift_vol import reshift_vol
 
@@ -70,6 +70,6 @@ opt.trueR = R_true
 opt.no_refine = False
 
 t_start = time.perf_counter()
-bestR, bestdx, reflect, vol2aligned, bestcorr = AlignVolumes(vol,vol_rotated,1,opt)
+bestR, bestdx, reflect, vol2aligned, bestcorr = align_volumes(vol,vol_rotated,1,opt)
 t = time.perf_counter() - t_start
 print("Timing = "+str(t))

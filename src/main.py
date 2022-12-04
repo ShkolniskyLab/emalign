@@ -2,7 +2,7 @@ import shutil
 import warnings
 from sys import exit, argv
 from src.emalign_input import check_for_newer_version, get_args, parse_args
-from src.AlignVolumes3d import AlignVolumes
+from src.align_volumes_3d import align_volumes
 from src.read_write import read_mrc, copy_and_rename
 from src.gentestdata import gentestdata
 import mrcfile
@@ -75,7 +75,7 @@ def main():
     opt.no_refine = args.no_refine
     
     # Run
-    bestR, bestdx, reflect, vol2aligned, bestcorr = AlignVolumes(vol1, vol2, args.verbose, opt)
+    bestR, bestdx, reflect, vol2aligned, bestcorr = align_volumes(vol1, vol2, args.verbose, opt)
 
     # Save
     # Copy vol2 to save header
