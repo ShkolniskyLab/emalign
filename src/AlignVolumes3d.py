@@ -217,7 +217,7 @@ def refine3DmatchBFGS(vol1, vol2, R1, estdx):
     X0 = np.array([psi, theta, phi, estdx[0], estdx[1], estdx[2]]).astype('float64')
     # BFGS optimization:
     res = minimize(eval3Dmatchaux, X0, args=(vol1, vol2), method='BFGS', tol=1e-3,
-                   options={'gtol': 1e-3, 'disp': False})
+                options={'gtol': 1e-3, 'disp': False})
     X = res.x
     psi = X[0];
     theta = X[1];
@@ -297,8 +297,23 @@ def AlignVolumes(vol1, vol2, verbose=0, opt=None):
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger()
-    if verbose == 0: logger.disabled = True
+    if verbose is False: 
+        logger.disabled = True
+    else:
+        logger.disabled = False
+            
+    class Struct:
+       pass
 
+
+    ### Check options:
+    if opt is None:        
+       opt = Struct()
+       opt.no_refine = False
+              
+    if not hasattr(opt, 'no_refine'):       
+        opt.no_refine = False
+        
     ### Check options:
     if hasattr(opt, 'sym'):
         sym = opt.sym
@@ -373,18 +388,28 @@ def AlignVolumes(vol1, vol2, verbose=0, opt=None):
         G_c = None
     R_est, R_est_J = fastAlignment3D(sym, vol1_ds.copy(), vol2_ds.copy(), n_ds, Nprojs, trueR, G_c, refrot, verbose);
 
+    logger.debug("R_est=\n"+str(R_est))
+    logger.debug("R_est_J=\n"+str(R_est_J))
+
     vol2_aligned_ds = fastrotate3d(vol2_ds, R_est)  # Rotate the original vol_2 back.
     vol2_aligned_J_ds = fastrotate3d(vol2_ds, R_est_J)
 
     vol2_aligned_J_ds = np.flip(vol2_aligned_J_ds, axis=2)
     estdx_ds = register_translations_3d(vol1_ds, vol2_aligned_ds)
     estdx_J_ds = register_translations_3d(vol1_ds, vol2_aligned_J_ds)
+    logger.debug("estdx_ds="+str(estdx_ds))
+    logger.debug("estdx_J_ds="+str(estdx_J_ds))
+
     if np.size(estdx_ds) != 3 or np.size(estdx_J_ds) != 3:
         raise Warning("***** Translation estimation failed *****")
+    
+    # Prepare FFTW data to avoid unnecessary calaculations    
     vol2_aligned_ds = reshift_vol(vol2_aligned_ds, estdx_ds)
     vol2_aligned_J_ds = reshift_vol(vol2_aligned_J_ds, estdx_J_ds)
     no1 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_ds.ravel(), rowvar=False)[0, 1:])
     no2 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_J_ds.ravel(), rowvar=False)[0, 1:])
+    logger.debug("no1=%f",no1)
+    logger.debug("no2=%f",no2)
 
     # if max(no1, no2) < 0.1:  # The coorelations of the estimated rotations are
     #     # smaller than 0.1, that is, no transformation was recovered.
@@ -404,8 +429,10 @@ def AlignVolumes(vol1, vol2, verbose=0, opt=None):
         logger.info('***** Reflection detected *****')
     logger.info('Correlation between downsampled aligned volumes before optimization is %.4f', corr_v)
     
-    
-    
+    logger.debug("R_est=\n"+str(R_est))
+    logger.debug("estdx_ds="+str(estdx_ds))
+    logger.debug("reflect=%d", reflect)
+       
     if opt.no_refine:
         logger.info('Skipping refinement of alignment parameters')
         bestR = R_est
@@ -416,18 +443,23 @@ def AlignVolumes(vol1, vol2, verbose=0, opt=None):
         # transformation between the two volumes.
         bestR = refine3DmatchBFGS(vol1_ds.copy(), vol2_ds.copy(), R_est, estdx_ds)
         bestR = R.as_matrix(bestR)
-        
+    
+    logger.debug("bestR=\n"+str(bestR))
     logger.info('Done aligning downsampled volumes')
     logger.info('Applying estimated rotation to original volumes')
     vol2aligned = fastrotate3d(vol2, bestR)
     logger.info('Estimating shift for original volumes')
     bestdx = register_translations_3d(vol1, vol2aligned)
+    logger.debug("bestdx="+str(bestdx))
     # if np.size(bestdx) != 3 :
     #    raise Warning("***** Translation estimation failed *****")
     
     if not opt.no_refine:
         logger.info('Refining shift for original volumes')
         bestdx = refine3DshiftBFGS(vol1, vol2, bestdx)
+        logger.debug("bestdx="+str(bestdx))
+    else:
+        logger.info('Skipping shift refinement')
         
     logger.info('Translating original volumes')
     vol2aligned = reshift_vol(vol2aligned, bestdx)

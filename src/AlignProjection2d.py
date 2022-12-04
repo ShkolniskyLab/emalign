@@ -20,7 +20,8 @@ import logging
 
 from src.cryo_project_itay_finufft import cryo_project
 from src.common_finufft import cryo_pft
-from src.commonline_R2 import commonline_R2, cryo_normalize
+#from src.commonline_R2 import commonline_R2, cryo_normalize
+from src.commonline_R2 import cryo_normalize
 from src.genRotationsGrid import genRotationsGrid
 from numpy import linalg as LA
 
@@ -153,7 +154,7 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     # Normalize polar Fourier transforms:
     logger.info('Normalizing the polar Fourier transform of reference projections')
     refprojs_hat = cryo_normalize(refprojs_hat)
-    
+            
     # Compute the common lines between the candidate rotations and the 
     # references:
     logger.info('Computing the common lines between reference and unaligned projections')     
@@ -164,8 +165,41 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
         Rk = np.transpose(candidate_rots[:,:,k])
         for j in range(Nprojs):
             Rj = np.transpose(rots_ref[:,:,j])
-            if np.sum(Rk[:,2] @ Rj[:,2]) < 0.999:
-                (ckj,cjk) = commonline_R2(Rk,Rj,L)
+            #if np.sum(Rk[:,2] @ Rj[:,2]) < 0.999:
+                
+            # The following is an optimization of np.dot(Rk[:,2],Rj[:,2])
+            dot_RkRj = Rk[0,2]*Rj[0,2] + Rk[1,2]*Rj[1,2] + Rk[2,2]*Rj[2,2]
+            if dot_RkRj < 0.999:
+                                
+                #(ckj,cjk) = commonline_R2(Rk,Rj,L)
+                # Embed call to eliminate overhead
+                ##############################
+                Rk3 = Rk[2,:]
+                Rj3 = Rj[2,:]
+
+                clvec = np.array([[Rk3[1]*Rj3[2] - Rk3[2]*Rj3[1]],
+                                  [Rk3[2]*Rj3[0] - Rk3[0]*Rj3[2]],
+                                  [Rk3[0]*Rj3[1] - Rk3[1]*Rj3[0]]])
+
+
+                cij = Rk @ clvec
+                cji = Rj @ clvec
+                    
+                alphaij = math.atan2(cij[1], cij[0])
+                alphaji = math.atan2(cji[1], cji[0])
+                
+                alphaij = alphaij + np.pi 
+                alphaji = alphaji + np.pi 
+                
+                l_ij = alphaij/(2*np.pi )*L
+                l_ji = alphaji/(2*np.pi )*L
+                
+                ckj = int(round(l_ij) % L)
+                cjk = int(round(l_ji) % L)
+                
+                #(tmpckj,tmpcjk) = commonline_R2(Rk,Rj,L)
+                #assert(tmpckj==ckj and tmpcjk==cjk)
+                ##############################
                 # Convert the returned indices ckj and cjk into 1-based
                 Ckj[k,j] = ckj
                 Cjk[k,j] = cjk
@@ -293,4 +327,3 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
     else:
         return Rots_est, shifts, corrs
     
-            

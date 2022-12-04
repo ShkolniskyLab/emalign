@@ -9,6 +9,7 @@ Created on Tue Oct 18 21:00:50 2022
 import numpy as np
 from numpy import fft
 from src.reshift_vol_opt import reshift_vol
+import src.reshift_vol_opt
 from scipy.optimize import minimize
 import pyfftw
 
@@ -32,11 +33,11 @@ class fftw_data_class:
 
 
 # %%
-def eval3Dshift(X, vol1, vol2):
+def eval3Dshift(X, vol1, vol2, reshift_cache):
     dx = X[0]
     dy = X[1]
     dz = X[2]
-    vol2_s = reshift_vol(vol2, np.array([dx, dy, dz]))
+    vol2_s = reshift_vol(vol2, np.array([dx, dy, dz]), reshift_cache)
     c = np.mean(np.corrcoef(vol1.ravel(), vol2_s.ravel(), rowvar=False)[0, 1:]).astype('float64')
     e = 1.0 - c
     return e
@@ -47,7 +48,10 @@ def refine3DshiftBFGS(vol1, vol2, estdx):
     # Create initial guess vector
     X0 = np.array([estdx[0].real, estdx[1].real, estdx[2].real]).astype('float64')
     # BFGS optimization:
-    res = minimize(eval3Dshift, X0, args=(vol1, vol2), method='BFGS', tol=1e-2,
+        
+    reshift_cache = src.reshift_vol_opt.fftw_data_class(vol1)
+    res = minimize(eval3Dshift, X0, args=(vol1, vol2, reshift_cache), 
+                   method='BFGS', tol=1e-2, 
                    options={'gtol': 1e-2, 'disp': False})
     X = res.x
     estdx = np.array([X[0], X[1], X[2]])

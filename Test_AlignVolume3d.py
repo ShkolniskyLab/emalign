@@ -11,9 +11,10 @@ from src.read_write import read_mrc
 from src.common_finufft import cryo_downsample
 from src.SymmetryGroups import genSymGroup
 from src.rand_rots import rand_rots
-from src.AlignVolumes3d import AlignVolumes
+from src.AlignVolumes3d_opt import AlignVolumes
 from src.fastrotate3d import fastrotate3d
 from src.reshift_vol import reshift_vol
+import time
 
 
 # Test for volume alignment
@@ -21,14 +22,14 @@ from src.reshift_vol import reshift_vol
 np.random.seed(2021)
 
 # Read molecule:
-vol = read_mrc('0825_C6.mrc')
-sym = 'C6'
+#vol = read_mrc('0825_C6.mrc')
+#sym = 'C6'
 
 #vol = read_mrc('10280_C1.mrc')
 #sym = 'C1'
 
-#vol = read_mrc('9203_D3.mrc')
-#sym = 'D3'
+vol = read_mrc('9203_D3.mrc')
+sym = 'D3'
 
 #vol = read_mrc('4179_T.mrc')
 #sym = 'T'
@@ -40,7 +41,7 @@ sym = 'C6'
 #sym = 'O'
 
 
-out_shape = (129,129,129)
+out_shape = (128,128,128)
 vol = cryo_downsample(vol,out_shape)
 
 np.random.seed(1337)
@@ -60,7 +61,11 @@ opt = Struct()
 opt.sym = sym   
 opt.Nref = 30
 opt.G = G
-opt.downsample = 48
+opt.downsample = 64
 opt.trueR = R_true
+opt.no_refine = False
 
+t_start = time.perf_counter()
 bestR, bestdx, reflect, vol2aligned, bestcorr = AlignVolumes(vol,vol_rotated,1,opt)
+t = time.perf_counter() - t_start
+print("Timing = "+str(t))

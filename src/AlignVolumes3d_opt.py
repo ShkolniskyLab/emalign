@@ -15,8 +15,8 @@ from src.cryo_project_itay_finufft import cryo_project
 from src.genRotationsGrid import genRotationsGrid
 from src.AlignProjection2d import AlignProjection
 from src.fastrotate3d_opt import fastrotate3d
-from src.register_translations_3d import register_translations_3d
-from src.register_translations_3d import refine3DshiftBFGS
+from src.register_translations_3d_opt import register_translations_3d
+from src.register_translations_3d_opt import refine3DshiftBFGS
 from src.reshift_vol_opt import reshift_vol
 import  src.reshift_vol_opt
 from src.SymmetryGroups import genSymGroup
