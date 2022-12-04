@@ -14,7 +14,7 @@ from scipy.spatial.transform import Rotation
 from src.common_finufft import cryo_downsample
 from src.cryo_project_itay_finufft import cryo_project
 from src.genRotationsGrid import genRotationsGrid
-from src.align_projection2d import align_projection
+from src.align_projection_2d import align_projection
 from src.fastrotate3d import fastrotate3d
 from src.register_translations_3d import register_translations_3d
 from src.register_translations_3d import refine3DshiftBFGS
