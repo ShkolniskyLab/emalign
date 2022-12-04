@@ -69,8 +69,8 @@ def AlignProjection(projs,vol,verbose=0,opt=None):
         opt.trueShifts- the true shifts-(dx,dy) of projs.
         opt.Rots - size=3x3x(size(Rots,3)). a set of candidate rotations.
     '''
-    logging.basicConfig(level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s %(message)s')
+    #logging.basicConfig(level=logging.DEBUG,
+    #format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger()  
     if verbose == 0 : logger.disabled = True
     
