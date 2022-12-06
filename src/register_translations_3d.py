@@ -62,10 +62,10 @@ def refine3DshiftBFGS(vol1, vol2, estdx):
 def register_translations_3d(vol1, vol2, fftw_object=None):
     # REGISTER_TRANSLATIONS_3D  Estimate relative shift between two volumes.
     # register_translations_3d(vol1,vol2,refdx)
-    #   Estimate the relative shift between two volumes vol1 and vol2 to subpixel
-    #   accuracy. The function uses phase correlation to estimate the relative
-    #   shift to within one pixel accuray, and then refines the estimation
-    #   using Newton iterations.
+    #   Estimate the relative shift between two volumes vol1 and vol2 to 
+    #   integral pixel accuracy. The function uses phase correlation to 
+    #   estimate the relative shift to within one pixel accuray.
+    #
     #   Input parameters:
     #   vol1,vol2 Two volumes to register. Volumes must be odd-sized.
     #   refidx    Two-dimensional vector with the true shift between the images,

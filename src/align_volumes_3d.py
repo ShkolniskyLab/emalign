@@ -421,10 +421,10 @@ def align_volumes(vol1, vol2, verbose=0, opt=None):
     if np.size(estdx_ds) != 3 or np.size(estdx_J_ds) != 3:
         raise Warning("***** Translation estimation failed *****")
 
-    # Prepare FFTW data to avoid unnecessary calaculations
-    reshift_fftw_data = src.reshift_vol.fftw_data_class(vol2_aligned_ds)
-    vol2_aligned_ds = reshift_vol(vol2_aligned_ds, estdx_ds, reshift_fftw_data)
-    vol2_aligned_J_ds = reshift_vol(vol2_aligned_J_ds, estdx_J_ds, reshift_fftw_data)
+    # Prepare FFTW data to avoid unnecessary calaculations        
+    vol2_aligned_ds = src.reshift_vol.reshift_vol_int(vol2_aligned_ds, estdx_ds)
+    vol2_aligned_J_ds = src.reshift_vol.reshift_vol_int(vol2_aligned_J_ds, estdx_J_ds)
+    
     no1 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_ds.ravel(), rowvar=False)[0, 1:])
     no2 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_J_ds.ravel(), rowvar=False)[0, 1:])
     logger.debug("no1=%f",no1)
@@ -482,7 +482,11 @@ def align_volumes(vol1, vol2, verbose=0, opt=None):
         logger.info('Skipping shift refinement')
 
     logger.info('Translating original volumes')
-    vol2aligned = reshift_vol(vol2aligned, bestdx)
+    if (np.round(bestdx) == bestdx).all():
+        # Use fast method
+        vol2aligned = src.reshift_vol.reshift_vol_int(vol2aligned, bestdx)
+    else:
+        vol2aligned = reshift_vol(vol2aligned, bestdx)
 
     logger.info('Computing correlations of original volumes')
     bestcorr = np.mean(np.corrcoef(vol1.ravel(), vol2aligned.ravel(), rowvar=False)[0, 1:])
