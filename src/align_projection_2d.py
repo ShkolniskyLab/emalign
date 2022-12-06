@@ -13,10 +13,14 @@ Created on Tue Feb  9 16:55:46 2021
 
 @author: yaelharpaz1
 """
+import time
 import numpy as np
 import math
 import cmath
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import wait
 
 from src.cryo_project_itay_finufft import cryo_project
 from src.common_finufft import cryo_pft
@@ -25,6 +29,43 @@ from src.commonline_R2 import cryo_normalize
 from src.genRotationsGrid import genRotationsGrid
 from numpy import linalg as LA
 
+def compute_commonlines_aux(Rj,candidate_rots,L):
+    Nrot = candidate_rots.shape[2]
+    Ckj = (-1)*np.ones((Nrot),dtype=int)
+    Cjk = (-1)*np.ones((Nrot),dtype=int)
+    Mkj = np.zeros((Nrot),dtype=int)
+        
+    for k in range(Nrot):
+        Rk = np.transpose(candidate_rots[:,:,k])
+        dot_RkRj = Rk[0,2]*Rj[0,2] + Rk[1,2]*Rj[1,2] + Rk[2,2]*Rj[2,2]
+        if dot_RkRj < 0.999:
+            Rk3 = Rk[2,:]
+            Rj3 = Rj[2,:]
+
+            clvec = np.array([[Rk3[1]*Rj3[2] - Rk3[2]*Rj3[1]],
+                                 [Rk3[2]*Rj3[0] - Rk3[0]*Rj3[2]],
+                                 [Rk3[0]*Rj3[1] - Rk3[1]*Rj3[0]]])
+
+            cij = Rk @ clvec
+            cji = Rj @ clvec
+                    
+            alphaij = math.atan2(cij[1], cij[0])
+            alphaji = math.atan2(cji[1], cji[0])
+                
+            alphaij = alphaij + np.pi 
+            alphaji = alphaji + np.pi 
+                
+            l_ij = alphaij/(2*np.pi )*L
+            l_ji = alphaji/(2*np.pi )*L
+                
+            ckj = int(round(l_ij) % L)
+            cjk = int(round(l_ji) % L)
+                
+            Ckj[k] = ckj
+            Cjk[k] = cjk
+            Mkj[k] = 1
+            
+    return Ckj, Cjk, Mkj
 
 def align_projection(projs,vol,verbose=0,opt=None):
     '''
@@ -124,7 +165,8 @@ def align_projection(projs,vol,verbose=0,opt=None):
     if trueShifts is None: refshift = 0
     canrots = 1
     if Rots is None: canrots = 0                
-    n = np.size(vol,0); n_r = math.ceil(n/2); L = 360
+    n = np.size(vol,0); n_r = math.ceil(n/2); 
+    L = 360
                         
     # Compute polar Fourier transform of projs:
     logger.info('Computing polar Fourier transform of unaligned projections using n_r= %i, L= %i',n_r,L)  
@@ -158,13 +200,15 @@ def align_projection(projs,vol,verbose=0,opt=None):
     # Compute the common lines between the candidate rotations and the 
     # references:
     logger.info('Computing the common lines between reference and unaligned projections')     
+
+    t1 = time.perf_counter()
     Ckj = (-1)*np.ones((Nrot,Nprojs),dtype=int)
     Cjk = (-1)*np.ones((Nrot,Nprojs),dtype=int)
     Mkj = np.zeros((Nrot,Nprojs),dtype=int)
-    for k in range(Nrot):
-        Rk = np.transpose(candidate_rots[:,:,k])
-        for j in range(Nprojs):
-            Rj = np.transpose(rots_ref[:,:,j])
+    for j in range(Nprojs):
+        Rj = np.transpose(rots_ref[:,:,j])
+        for k in range(Nrot):
+            Rk = np.transpose(candidate_rots[:,:,k])
             #if np.sum(Rk[:,2] @ Rj[:,2]) < 0.999:
                 
             # The following is an optimization of np.dot(Rk[:,2],Rj[:,2])
@@ -204,8 +248,39 @@ def align_projection(projs,vol,verbose=0,opt=None):
                 Ckj[k,j] = ckj
                 Cjk[k,j] = cjk
                 Mkj[k,j] = 1
-    logger.info('Computing the common lines is done')
-    
+                
+    t2 = time.perf_counter()
+    logger.info('Computing the common lines is done. Took %5.2f seconds', t2-t1)
+   
+# Multithreaded version of the above code, if we need it some day.
+# Currently it is slower than the above code.    
+# =============================================================================
+#     t1 = time.perf_counter()    
+#     Ckj2 = (-1)*np.ones((Nrot,Nprojs),dtype=int)
+#     Cjk2 = (-1)*np.ones((Nrot,Nprojs),dtype=int)
+#     Mkj2 = np.zeros((Nrot,Nprojs),dtype=int)
+# 
+#     futures = []
+#     with ThreadPoolExecutor(max_workers=threading.active_count()) as executor:
+#         for j in range(Nprojs):
+#             Rj = np.transpose(rots_ref[:,:,j])
+#             f = executor.submit(compute_commonlines_aux, Rj,candidate_rots,L)
+#             futures.append(f)
+# 
+#     wait(futures)
+# 
+#     for j in range(Nprojs):
+#         c1, c2, m = futures[j].result()   
+#         Ckj2[:,j] = c1
+#         Cjk2[:,j] = c2
+#         Mkj2[:,j] = m
+#     t2 = time.perf_counter()        
+#     logger.info('Computing the common lines is done. Took %5.2f seconds', t2-t1)
+#     assert(np.sum(np.abs(Ckj-Ckj2))==0)
+#     assert(np.sum(np.abs(Cjk-Cjk2))==0)
+#     assert(np.sum(np.abs(Mkj-Mkj2))==0)
+#     
+# =============================================================================
     # Generate shift grid:
     # generating a shift grid on the common lines, and choosing the shift
     # that brings the best correlation in the comparisson between the common 
