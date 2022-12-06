@@ -50,7 +50,7 @@ test_densities = [
 
 
 #emalign_cmd = "/home/yoelsh/.local/bin/emalign"
-emalign_cmd = shutil. which('emalign')
+emalign_cmd = shutil.which('emalign')
 
 # Setup logger
 for handler in logging.root.handlers[:]:
@@ -541,7 +541,7 @@ def results_varying_downsampling():
     df.to_excel("results_varying_downsampling.xlsx")
 
 
-    return results
+    #return results
 
 
 
@@ -1176,9 +1176,11 @@ def test_stability():
     bestR, bestdx, reflect, vol2aligned, bestcorr = align_volumes(vol, vol_transformed, verbose = 1 , opt = opt)
     print(np.linalg.norm(bestR.transpose()-R))  #Should be about 1.0e-3
 
+
+## Main part: run tests
 #download_data('./data')
 
-#results = results_varying_downsampling()
+#results_varying_downsampling()
 #results_varying_Nprojs()
 results_comparison_to_eman()
 #results_noise()

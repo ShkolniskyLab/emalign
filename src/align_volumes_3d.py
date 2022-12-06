@@ -303,7 +303,11 @@ def align_volumes(vol1, vol2, verbose=0, opt=None):
     '''
 
     logger = logging.getLogger()
-    hdlr = logger.handlers[0]
+    if len(logger.handlers) == 0:
+        hdlr = logging.StreamHandler()
+        logger.addHandler(hdlr)
+    
+    hdlr = logger.handlers[0]    
     fmt = logging.Formatter('%(message)s')
     hdlr.setFormatter(fmt)
     hdlr.setLevel(logging.INFO)
