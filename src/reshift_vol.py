@@ -141,7 +141,7 @@ def reshift_vol(vol,s,fftw_data=None):
     
     
     
-    if LA.norm(np.imag(svol[:]))/LA.norm(svol[:]) > 1.0e-7:
+    if LA.norm(np.imag(svol[:]))/LA.norm(svol[:]) > 5.0e-7:
         raise ValueError("Large imaginary components")
     svol = np.real(svol)
    
@@ -153,3 +153,16 @@ def reshift_vol(vol,s,fftw_data=None):
     # assert(err<5.0e-7)
     return svol
 
+#%% 
+def reshift_vol_int(vol,s):
+    # Shift a volume by the vector s.
+    # s must be be a vector of integers. 
+    # For non integer shifts use reshift_vol
+
+    s = np.array(s)
+    if not (np.round(s) == s).all():
+        raise ValueError("s must be a vector of integers.")
+        
+    return np.roll(vol,(-s).astype(int),axis=[0,1,2])
+        
+    
