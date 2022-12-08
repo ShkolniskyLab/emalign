@@ -44,6 +44,20 @@ sym = 'C1'
 out_shape = (128,128,128)
 vol = cryo_downsample(vol,out_shape)
 
+# s=[1.1,1.2,1.3]
+# import src.reshift_vol
+# t1 = time.perf_counter()
+# svol1=src.reshift_vol.reshift_vol(vol, s)
+# t2 = time.perf_counter()
+# print("time ref = ",str(t2-t1))
+
+# t1 = time.perf_counter()
+# svol2=src.reshift_vol.reshift_vol_rfft(vol, s)
+# t2 = time.perf_counter()
+# print("time fftn = ",str(t2-t1))
+
+# print(np.linalg.norm(svol1[:] - svol2[:])/np.linalg.norm(svol1[:]))
+
 np.random.seed(1337)
 R_true = rand_rots(1).reshape((3,3))
 #R_true = mat_to_npy('trueR_test3d_forVol')

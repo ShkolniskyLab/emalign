@@ -51,7 +51,7 @@ def refine3DshiftBFGS(vol1, vol2, estdx):
         
     reshift_cache = src.reshift_vol.fftw_data_class(vol1)
     res = minimize(eval3Dshift, X0, args=(vol1, vol2, reshift_cache), 
-                   method='BFGS', tol=1e-2, 
+                   method='BFGS', tol=1e-3, 
                    options={'gtol': 1e-1, 'disp': False})
     X = res.x
     estdx = np.array([X[0], X[1], X[2]])

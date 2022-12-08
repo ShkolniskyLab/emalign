@@ -224,7 +224,7 @@ def refine3DmatchBFGS(vol1, vol2, R1, estdx):
     reshift_fftw_data = src.reshift_vol.fftw_data_class(vol1)
     # BFGS optimization:
     res = minimize(eval3Dmatchaux, X0, args=(vol1, vol2, rotate_fftw_data,
-                reshift_fftw_data), method='BFGS', tol=1e-2,
+                reshift_fftw_data), method='BFGS', tol=1e-3,
                 options={'gtol': 1e-1, 'disp': False})
     X = res.x
     psi = X[0]
