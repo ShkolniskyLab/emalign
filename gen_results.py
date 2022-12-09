@@ -42,9 +42,9 @@ test_densities = [
     ['D3',    '20016',    0.83],
     ['D4',    '22462',    0.844],
     ['D7',     '9233',    0.66159993],
-    #['D11',   '21140',    1.06],
+    ['D11',   '21140',    1.06],
     ['T',      '4179',    0.97],
-    ['O',     '22658',    0.502],
+    #['O',     '22658',    0.502],
     ['I',     '24494',    1.06 ]
 ]
 
@@ -466,7 +466,7 @@ def results_varying_downsampling():
                 '--n-projs {4:d} '+
                 '--output-parameters {5:s} --no-refine '+
                 '--verbose').format(vol_ref_name, vol_rot_name,
-                                    vol_aligned_norefine_name, sz_ds, 50,
+                                    vol_aligned_norefine_name, sz_ds, 30,
                                     params_norefine_name)                         
            
                                     
@@ -490,7 +490,7 @@ def results_varying_downsampling():
                 '--n-projs {4:d} '+
                 '--output-parameters {5:s}  '+
                 '--verbose').format(vol_ref_name, vol_rot_name, 
-                                    vol_aligned_refine_name, sz_ds, 50,
+                                    vol_aligned_refine_name, sz_ds, 30,
                                     params_refine_name)                                
                 
                 # Run alignment command
@@ -784,6 +784,7 @@ def results_comparison_to_eman():
         
             # Generate emalign script
             sz_ds = 64
+            n_projs = 30
                     
             # Run alignment without refiment                    
             align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
@@ -792,8 +793,8 @@ def results_comparison_to_eman():
                 '--output-parameters {5:s} --no-refine '+
                 '--verbose').format(fnames_dict['ref_copy'], 
                                     fnames_dict['transformed'],
-                                    fnames_dict['aligned_norefine'], sz_ds, 50,
-                                    fnames_dict['output_norefine'])
+                                    fnames_dict['aligned_norefine'], sz_ds, 
+                                    n_projs, fnames_dict['output_norefine'])
                                         
             emalign_script.write("start=`date +%s`\n")
             emalign_script.write(align_cmd+"\n")
@@ -810,7 +811,7 @@ def results_comparison_to_eman():
                 '--output-parameters {5:s} '+
                 '--verbose').format(fnames_dict['ref_copy'], fnames_dict['transformed'],
                                     fnames_dict['aligned_refine'], sz_ds, 
-                                    50, fnames_dict['output_refine'])
+                                    n_projs, fnames_dict['output_refine'])
                                     
             emalign_script.write("start=`date +%s`\n")
             emalign_script.write(align_cmd+"\n")
@@ -910,8 +911,8 @@ def results_comparison_to_eman():
 #%%
 def results_noise():
 
-    disable_preprocess = False
-    disable_analysis = True
+    disable_preprocess = True
+    disable_analysis = False
     
     if not disable_preprocess:
         # Create EMAN script file
@@ -1008,14 +1009,17 @@ def results_noise():
         
             # Generate emalign script
             sz_ds = 64
+            n_projs = 30
                     
             # Run alignment without refiment                    
             align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
                 '--output-vol {2:s} --downsample {3:d} '+
-                ' --n-projs 50 ' + 
-                '--output-parameters {4:s} --no-refine '+
-                '--verbose').format(fnames_dict['ref_noisy'], fnames_dict['transformed'],
-                                    fnames_dict['aligned_norefine'], sz_ds, 
+                ' --n-projs {4:d} ' + 
+                '--output-parameters {5:s} --no-refine '+
+                '--verbose').format(fnames_dict['ref_noisy'], 
+                                    fnames_dict['transformed'],
+                                    fnames_dict['aligned_norefine'], 
+                                    sz_ds, n_projs,
                                     fnames_dict['output_norefine'])
                                         
             emalign_script.write("echo Running test {0:d} snr={1:5.4f}\n\n".format(testidx,snr))
@@ -1030,10 +1034,11 @@ def results_noise():
             # Run alignment with refiment
             align_cmd = emalign_cmd + (' --vol1 {0:s} --vol2 {1:s} '+
                 '--output-vol {2:s} --downsample {3:d} '+
-                ' --n-projs 50 ' + 
-                '--output-parameters {4:s} '+
+                ' --n-projs  {4:d} ' + 
+                '--output-parameters {5:s} '+
                 '--verbose').format(fnames_dict['ref_noisy'], fnames_dict['transformed'],
-                                    fnames_dict['aligned_refine'], sz_ds, 
+                                    fnames_dict['aligned_refine'], 
+                                    sz_ds, n_projs,
                                     fnames_dict['output_refine'])
                                     
             emalign_script.write("start=`date +%s`\n")
@@ -1180,9 +1185,9 @@ def test_stability():
 ## Main part: run tests
 #download_data('./data')
 
-#results_varying_downsampling()
+results_varying_downsampling()
 #results_varying_Nprojs()
-results_comparison_to_eman()
+#results_comparison_to_eman()
 #results_noise()
 
 #test_stability()
