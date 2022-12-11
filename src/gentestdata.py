@@ -33,7 +33,7 @@ def gentestdata(ref_mrc_filename,transformed_mrc_filename,emdID=2660,verbose=1):
     
     logger = logging.getLogger()
     logger.disabled = False
-    if verbose == False: 
+    if verbose == 0: 
         logger.disabled = True  
     
     # Read molecule:    

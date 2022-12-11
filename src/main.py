@@ -1,6 +1,6 @@
 import shutil
 import warnings
-from sys import exit, argv, stdout
+from sys import exit, argv
 import logging
 from src.emalign_input import check_for_newer_version, get_args, parse_args
 from src.align_volumes_3d import align_volumes
@@ -36,15 +36,10 @@ def main():
             
             
             # Setup logger
+            logging.basicConfig(level=logging.INFO, format='%(message)s')
             logger = logging.getLogger()
-            logger.handlers.clear()
-            hdlr = logging.StreamHandler(stdout)            
-            fmt = logging.Formatter('%(message)s')
-            hdlr.setFormatter(fmt)
-            hdlr.setLevel(logging.INFO)
-            logger.addHandler(hdlr)
 
-            if args.verbose is False:
+            if args.verbose == 0:
                 logger.disabled = True
             else:
                 logger.disabled = False
@@ -70,16 +65,11 @@ def main():
     except:
         pass
 
-    # Setup logger
+    # Setup logger    
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
     logger = logging.getLogger()
-    logger.handlers.clear()
-    hdlr = logging.StreamHandler(stdout)            
-    fmt = logging.Formatter('%(message)s')
-    hdlr.setFormatter(fmt)
-    hdlr.setLevel(logging.INFO)
-    logger.addHandler(hdlr)
 
-    if args.verbose is False:
+    if args.verbose == 0:
         logger.disabled = True
     else:
         logger.disabled = False

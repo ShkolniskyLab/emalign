@@ -47,6 +47,7 @@ def fast_alignment_3d(sym, vol1, vol2, Nprojs=30, trueR=None, G_group=None, refr
     logger = logging.getLogger()
     if verbose == 0:
         logger.disabled = True
+        
     # Generate reference projections from vol2:
     logger.info('Generating %i reference projections.', Nprojs)
     Rots = genRotationsGrid(75)
@@ -303,14 +304,6 @@ def align_volumes(vol1, vol2, verbose=0, opt=None):
     '''
 
     logger = logging.getLogger()
-    if len(logger.handlers) == 0:
-        hdlr = logging.StreamHandler()
-        logger.addHandler(hdlr)
-    
-    hdlr = logger.handlers[0]    
-    fmt = logging.Formatter('%(message)s')
-    hdlr.setFormatter(fmt)
-    hdlr.setLevel(logging.INFO)
 
     if verbose is False:
         logger.disabled = True

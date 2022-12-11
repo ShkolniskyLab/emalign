@@ -197,9 +197,9 @@ def get_args():
     while verbose == 0:
         verbose_in = input('Display detailed progress? [y/n]: ')
         if verbose_in.strip().lower().startswith('y'):
-            verbose = True
+            verbose = 1
         elif verbose_in.strip().lower().startswith('n'):
-            verbose = False
+            verbose = 0
             break
         else:
             print("Please choose y/n.")
