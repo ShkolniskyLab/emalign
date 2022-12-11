@@ -2,7 +2,7 @@
 
 A algorithm for aligning rotation, reflection, and translation between volumes. 
 
-Current version: 1.0.2
+Current version: 1.0.3
 
 Project's homepage: https://github.com/ShkolniskyLab/emalign
 
