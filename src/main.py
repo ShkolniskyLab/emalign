@@ -1,6 +1,7 @@
 import shutil
 import warnings
-from sys import exit, argv
+from sys import exit, argv, stdout
+import logging
 from src.emalign_input import check_for_newer_version, get_args, parse_args
 from src.align_volumes_3d import align_volumes
 from src.read_write import read_mrc, copy_and_rename
@@ -32,6 +33,22 @@ def main():
             emdID = 2660
             ref_mrc_filename = "map_ref_{0}.mrc".format(emdID)
             transformed_mrc_filename = "map_transformed_{0}.mrc".format(emdID)
+            
+            
+            # Setup logger
+            logger = logging.getLogger()
+            logger.handlers.clear()
+            hdlr = logging.StreamHandler(stdout)            
+            fmt = logging.Formatter('%(message)s')
+            hdlr.setFormatter(fmt)
+            hdlr.setLevel(logging.INFO)
+            logger.addHandler(hdlr)
+
+            if args.verbose is False:
+                logger.disabled = True
+            else:
+                logger.disabled = False
+
             print("Generating test data...")
             gentestdata(ref_mrc_filename, transformed_mrc_filename, emdID, args.verbose)
             print("Test volume saved to " + ref_mrc_filename)
@@ -53,10 +70,35 @@ def main():
     except:
         pass
 
+    # Setup logger
+    logger = logging.getLogger()
+    logger.handlers.clear()
+    hdlr = logging.StreamHandler(stdout)            
+    fmt = logging.Formatter('%(message)s')
+    hdlr.setFormatter(fmt)
+    hdlr.setLevel(logging.INFO)
+    logger.addHandler(hdlr)
+
+    if args.verbose is False:
+        logger.disabled = True
+    else:
+        logger.disabled = False
+    
     # Load volumes
     vol1 = read_mrc(args.vol1)
     vol2 = read_mrc(args.vol2)
+    
+    if not ((vol1.shape[1]==vol1.shape[0]) and (vol1.shape[2]==vol1.shape[0]) 
+            and (vol1.shape[0] % 2 == 0)):
+        raise ValueError("All three dimensions of input volumes must be equal and even")   
 
+    if not ((vol1.shape[1]==vol1.shape[0]) and (vol1.shape[2]==vol1.shape[0]) 
+            and (vol1.shape[0] % 2 == 0)):
+        raise ValueError("All three dimensions of input volumes must be equal and even")
+        
+    if (vol1.shape[0] != vol2.shape[0]):
+        raise ValueError("Input volumes must be of same dimensions")
+    
     # If we decide to downsample them to the same size
     # n1 = vol1.shape[0]
     # n2 = vol2.shape[0]

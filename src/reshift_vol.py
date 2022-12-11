@@ -54,7 +54,7 @@ def reshift_vol_ref(vol,s,fftw_data=None):
     if vol.ndim != 3:
         raise ValueError("Input must be a 3D volume")
     if (np.size(vol,0) != np.size(vol,1)) or (np.size(vol,1) != np.size(vol,2)):
-        raise ValueError("All three dimension of the input must be equal")   
+        raise ValueError("All three dimensions of the input must be equal")   
     n = np.size(vol,0)
     ll = np.fix(n/2)
     freqrng = np.arange(-ll,n-ll)
