@@ -25,8 +25,8 @@ np.random.seed(2021)
 #vol = read_mrc('0825_C6.mrc')
 #sym = 'C6'
 
-vol = read_mrc('10280_C1.mrc')
-sym = 'C1'
+#vol = read_mrc('10280_C1.mrc')
+#sym = 'C1'
 
 #vol = read_mrc('9203_D3.mrc')
 #sym = 'D3'
@@ -37,12 +37,12 @@ sym = 'C1'
 #vol = read_mrc('24494_I.mrc')
 #sym = 'I'
 
-#vol = read_mrc('22658_O.mrc')
-#sym = 'O'
+vol = read_mrc('22658_O.mrc')
+sym = 'O'
 
 
-out_shape = (128,128,128)
-vol = cryo_downsample(vol,out_shape)
+#out_shape = (128,128,128)
+#vol = cryo_downsample(vol,out_shape)
 
 # s=[1.1,1.2,1.3]
 # import src.reshift_vol
@@ -77,7 +77,7 @@ class Struct:
 
 opt = Struct()
 opt.sym = sym
-opt.Nref = 30
+opt.Nprojs = 30
 opt.G = G
 opt.downsample = 64
 opt.trueR = R_true

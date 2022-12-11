@@ -911,8 +911,8 @@ def results_comparison_to_eman():
 #%%
 def results_noise():
 
-    disable_preprocess = True
-    disable_analysis = False
+    disable_preprocess = False
+    disable_analysis = True
     
     if not disable_preprocess:
         # Create EMAN script file
@@ -1185,9 +1185,9 @@ def test_stability():
 ## Main part: run tests
 #download_data('./data')
 
-results_varying_downsampling()
+#results_varying_downsampling()
 #results_varying_Nprojs()
-#results_comparison_to_eman()
+results_comparison_to_eman()
 #results_noise()
 
 #test_stability()
