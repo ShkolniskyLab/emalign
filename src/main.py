@@ -52,7 +52,7 @@ def main():
             print("Generating test data...")
             gentestdata(ref_mrc_filename, transformed_mrc_filename, emdID, args.verbose)
             print("Test volume saved to " + ref_mrc_filename)
-            print("Transform volume saved to "+ transformed_mrc_filename)
+            print("Transformed volume saved to "+ transformed_mrc_filename)
             exit()
             
         if args.vol1 is None or args.vol2 is None or args.output_vol is None:
