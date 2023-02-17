@@ -49,7 +49,7 @@ test_densities = [
 ]
 
 
-#emalign_cmd = "/home/yoelsh/.local/bin/emalign"
+#emalign_cmd = '/home/yoelsh/.local/bin/emalign'
 emalign_cmd = shutil. which('emalign')
 
 # Setup logger
@@ -364,7 +364,7 @@ def run_cmd(cmd):
     t_start = time.time()
     
     # Run without printouts
-    with open('emalign.log', "a") as outfile:
+    with open('emalign.log', 'a') as outfile:
         subprocess.run(shlex.split(cmd), stdout=outfile, stderr=outfile)  
     
     # Run with printouts
@@ -427,7 +427,7 @@ def results_varying_downsampling():
             # Generate a random rotation
             R = np.squeeze(src.rand_rots.rand_rots(1))
             assert abs(np.linalg.det(R)-1) <1.0e-8
-            logger.info("R_ref = \n"+str(R))
+            logger.info('R_ref = \n'+str(R))
 
             # Rotate the reference volume by the random rotation
             vol_transformed = src.fastrotate3d.fastrotate3d(vol,R)
@@ -537,8 +537,8 @@ def results_varying_downsampling():
     df = pd.DataFrame(results, columns = ['symmetry','emdid','size_orig', 
                 'size_ds','err_ang1_norefine','err_ang2_norefine',
                 't_norefine','err_ang1_refine','err_ang2_refine','t_refine'])
-    df.to_csv("results_varying_downsampling.txt")
-    df.to_excel("results_varying_downsampling.xlsx")
+    df.to_csv('results_varying_downsampling.txt')
+    df.to_excel('results_varying_downsampling.xlsx')
 
 
     return results
@@ -571,7 +571,7 @@ def results_varying_Nprojs():
             logger.info('Test %d/%d %s  (EMD%s)',testidx+1,
                         len(test_densities),symmetry,emdid)
             
-            vol = src.read_write.read_mrc(fnames_dict["ref"])            
+            vol = src.read_write.read_mrc(fnames_dict['ref'])            
             #vol = src.common_finufft.cryo_downsample(vol,[64,64,64])
             
             
@@ -688,23 +688,25 @@ def results_varying_Nprojs():
                     os.remove(params_refine_name)
 
     df = pd.DataFrame(results, columns = ['symmetry','emdid','size_orig', 'n_projs','err_ang1_norefine','err_ang2_norefine','t_norefine','err_ang1_refine','err_ang2_refine','t_refine'])
-    df.to_csv("results_varying_nprojs.txt")
-    df.to_excel("results_varying_nprojs.xlsx")
+    df.to_csv('results_varying_nprojs.txt')
+    df.to_excel('results_varying_nprojs.xlsx')
 
     return results
 
 
 #%%
-def results_comparison_to_eman():
+def results_comparison_to_other_packages():
+    # Compare the perfomance of our algorithm to that of EMAN and XMIPP
     init_random_state()
     
-    disable_preprocess = True
-    disable_analysis = False
+    disable_preprocess = False
+    disable_analysis = True
     
     if not disable_preprocess:
         # Create EMAN script file
-        eman_script =  open("run_eman_test.sh", 'w')
-        emalign_script =  open("run_emalign_test.sh", 'w')
+        eman_script =  open('run_eman_test.sh', 'w')
+        xmipp_script = open('run_xmipp_test.sh', 'w')
+        emalign_script =  open('run_emalign_test.sh', 'w')
 
     results = []
     
@@ -717,21 +719,34 @@ def results_comparison_to_eman():
         emdid = test_data[1]        
         
         # Generate filenames
-        eman_dir = "./comparison_to_eman"            
+        output_dir = './comparison_to_other_packages'
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        
         fnames_dict={}
-        fnames_dict['ref'] = os.path.join("data",'map_{0:s}_ref.mrc'.format(emdid))
-        fnames_dict['ref_copy'] = os.path.join(eman_dir,'map_{0:s}_ref.mrc'.format(emdid))
-        fnames_dict['transformed'] = os.path.join(eman_dir,'map_{0:s}_transformed.mrc'.format(emdid))
-        fnames_dict['aligned_norefine'] = os.path.join(eman_dir,'map_{0:s}_aligned_norefine.mrc'.format(emdid))
-        fnames_dict['aligned_refine'] = os.path.join(eman_dir,'map_{0:s}_aligned_refine.mrc'.format(emdid))
-        fnames_dict['aligned_eman'] = os.path.join(eman_dir,'map_{0:s}_aligned_eman.mrc'.format(emdid))
-        fnames_dict['ref_rot'] = os.path.join(eman_dir,'ref_rot_{0:s}.txt'.format(emdid))
-        fnames_dict['output_eman'] = os.path.join(eman_dir,'params_eman_{0:s}.txt'.format(emdid))        
-        fnames_dict['timing_eman'] = os.path.join(eman_dir,'timing_eman_{0:s}.txt'.format(emdid))
-        fnames_dict['output_norefine'] = os.path.join(eman_dir,'output_norefine_{0:s}.txt'.format(emdid))
-        fnames_dict['output_refine'] = os.path.join(eman_dir,'output_refine_{0:s}.txt'.format(emdid))
-        fnames_dict['timing_norefine'] = os.path.join(eman_dir,'timing_norefine_{0:s}.txt'.format(emdid))
-        fnames_dict['timing_refine'] = os.path.join(eman_dir,'timing_refine_{0:s}.txt'.format(emdid))
+        # Common data
+        fnames_dict['ref'] = 'data/map_{0:s}_ref.mrc'.format(emdid)
+        fnames_dict['ref_copy'] = output_dir+'/map_{0:s}_ref.mrc'.format(emdid)
+        fnames_dict['transformed'] = output_dir+'/map_{0:s}_transformed.mrc'.format(emdid)
+        fnames_dict['ref_rot'] = output_dir+'/ref_rot_{0:s}.txt'.format(emdid)
+
+        # EMalign output
+        fnames_dict['aligned_norefine'] = output_dir+'/map_{0:s}_aligned_norefine.mrc'.format(emdid)
+        fnames_dict['aligned_refine'] = output_dir+'/map_{0:s}_aligned_refine.mrc'.format(emdid)
+        fnames_dict['output_norefine'] = output_dir+'/output_norefine_{0:s}.txt'.format(emdid)
+        fnames_dict['output_refine'] = output_dir+'/output_refine_{0:s}.txt'.format(emdid)
+        fnames_dict['timing_norefine'] = output_dir+'/timing_norefine_{0:s}.txt'.format(emdid)
+        fnames_dict['timing_refine'] = output_dir+'/timing_refine_{0:s}.txt'.format(emdid)
+
+        # EMAN output
+        fnames_dict['aligned_eman'] = output_dir+'/map_{0:s}_aligned_eman.mrc'.format(emdid)
+        fnames_dict['params_eman'] = output_dir+'/params_eman_{0:s}.txt'.format(emdid)
+        fnames_dict['timing_eman'] = output_dir+'/timing_eman_{0:s}.txt'.format(emdid)
+
+        # XMIPP output
+        fnames_dict['aligned_xmipp'] = output_dir+'/map_{0:s}_aligned_xmipp.mrc'.format(emdid)
+        fnames_dict['params_xmipp'] = output_dir+'/params_xmipp_{0:s}.txt'.format(emdid)
+        fnames_dict['timing_xmipp'] = output_dir+'/timing_xmipp_{0:s}.txt'.format(emdid)
                 
         logger.info('Test %d/%d %s  (EMD%s)',testidx+1,
                             len(test_densities),symmetry,emdid)
@@ -753,35 +768,39 @@ def results_comparison_to_eman():
             vol_transformed = src.reshift_vol.reshift_vol(vol_transformed,shift)
             
             # Save volumes to align        
-            src.read_write.write_mrc(fnames_dict["ref_copy"], vol)                
-            src.read_write.write_mrc(fnames_dict["transformed"], vol_transformed)                
+            src.read_write.write_mrc(fnames_dict['ref_copy'], vol)                
+            src.read_write.write_mrc(fnames_dict['transformed'], vol_transformed)                
     
             # Save rotation paramters    
-            with open(fnames_dict["ref_rot"], 'w') as f:
-                f.write(str(R)+"\n")
+            with open(fnames_dict['ref_rot'], 'w') as f:
+                f.write(str(R)+'\n')
                     
-                # Generate EMAN script        
-       
-            eman_script.write("start=`date +%s`\n")
-            eman_script.write(("e2proc3d.py {0:s} {1:s} --alignref {2:s} " + 
-                          "--align rotate_translate_3d_tree "+
-                          "--verbose 1 > {3:s}\n"
-                          ).format(fnames_dict["transformed"],
-                                   fnames_dict["aligned_eman"],
-                                   fnames_dict["ref"], fnames_dict["output_eman"]))
-            eman_script.write("end=`date +%s`\n")
-            eman_script.write(("echo `expr $end - $start` > {0:s}\n\n"
-                               ).format(fnames_dict["timing_eman"]))
+            # Generate EMAN script  
+            eman_script.write('start=`date +%s`\n')
+            eman_script.write(('e2proc3d.py {0:s} {1:s} --alignref {2:s} ' + 
+                          '--align rotate_translate_3d_tree '+
+                          '--verbose 1 > {3:s}\n'
+                          ).format(fnames_dict['transformed'],
+                                   fnames_dict['aligned_eman'],
+                                   fnames_dict['ref'], fnames_dict['params_eman']))
+            eman_script.write('end=`date +%s`\n')
+            eman_script.write(('echo `expr $end - $start` > {0:s}\n'
+                               ).format(fnames_dict['timing_eman']))
         
             eman_script.flush()
+
+            # Generate XMIPP script  
+            xmipp_script.write('start=`date +%s`\n')
+            xmipp_script.write(('xmipp_volume_align --i1 {0:s} --i2 {1:s} ' + 
+                    '--apply {2:s} --frm --dontScale --store {3:s}\n').format(
+                    fnames_dict['ref'],fnames_dict['transformed'],
+                    fnames_dict['aligned_xmipp'],fnames_dict['params_xmipp']))
+            xmipp_script.write('end=`date +%s`\n')
+            xmipp_script.write(('echo `expr $end - $start` > {0:s}\n'
+                               ).format(fnames_dict['timing_xmipp']))
+        
+            xmipp_script.flush()
             
-            ###################################################################
-            # You have to run the EMAN script run_eman.sh from 
-            # command line, It is not possible ti run it from within Pyhton 
-            # since it uses a different conda environment
-            ###################################################################
-        
-        
             # Generate emalign script
             sz_ds = 64
                     
@@ -795,12 +814,12 @@ def results_comparison_to_eman():
                                     fnames_dict['aligned_norefine'], sz_ds, 50,
                                     fnames_dict['output_norefine'])
                                         
-            emalign_script.write("start=`date +%s`\n")
-            emalign_script.write(align_cmd+"\n")
-            emalign_script.write("end=`date +%s`\n")
-            emalign_script.write(("echo `expr $end - $start` > {0:s}\n"
-                                   ).format(fnames_dict["timing_norefine"]))
-            emalign_script.write("\n")
+            emalign_script.write('start=`date +%s`\n')
+            emalign_script.write(align_cmd+'\n')
+            emalign_script.write('end=`date +%s`\n')
+            emalign_script.write(('echo `expr $end - $start` > {0:s}\n'
+                                   ).format(fnames_dict['timing_norefine']))
+            emalign_script.write('\n')
        
         
             # Run alignment with refiment
@@ -812,22 +831,29 @@ def results_comparison_to_eman():
                                     fnames_dict['aligned_refine'], sz_ds, 
                                     50, fnames_dict['output_refine'])
                                     
-            emalign_script.write("start=`date +%s`\n")
-            emalign_script.write(align_cmd+"\n")
-            emalign_script.write("end=`date +%s`\n")
-            emalign_script.write(("echo `expr $end - $start` > {0:s}\n"
-                                  ).format(fnames_dict["timing_refine"]))
-            emalign_script.write("\n\n")
+            emalign_script.write('start=`date +%s`\n')
+            emalign_script.write(align_cmd+'\n')
+            emalign_script.write('end=`date +%s`\n')
+            emalign_script.write(('echo `expr $end - $start` > {0:s}\n'
+                                  ).format(fnames_dict['timing_refine']))
+            emalign_script.write('\n\n')
         
             emalign_script.flush()
-            
+
+            ###################################################################
+            # You have to run all test scripts: run_emalign_test.sh, 
+            # run_eman_test.sh, and run_xmipp_test.sh  from Linux command line. 
+            # It is not possible to run the EMAN scripts it from within Python  
+            # since it uses a different conda environment.
+            ###################################################################
+                            
         if not disable_analysis:
         # Parse outputs
         
-            R_ref = rot_from_params_file(fnames_dict["ref_rot"])        
+            R_ref = rot_from_params_file(fnames_dict['ref_rot'])        
             
             # Eman accuracy
-            with open(fnames_dict["output_eman"], 'r') as f:
+            with open(fnames_dict['params_eman'], 'r') as f:
                 lines = f.readlines() 
                 res = (parse.search("'az':{0:g},'alt':{},'phi':{},'tx'",lines[1]))
                 az = float(res[0])
@@ -845,30 +871,30 @@ def results_comparison_to_eman():
                 err_ang1_eman, err_ang2_eman = measure_error(R_ref,R_eman,symmetry)
                 
             # Eman Timing
-            with open(fnames_dict["timing_eman"], 'r') as f:
+            with open(fnames_dict['timing_eman'], 'r') as f:
                 t_eman = float(f.readline())
               
             # Emalign accuracy
-            R_norefine = rot_from_params_file(fnames_dict["output_norefine"])
+            R_norefine = rot_from_params_file(fnames_dict['output_norefine'])
             err_ang1_norefine, err_ang2_norefine = measure_error(R_ref, 
                                             R_norefine.transpose(), symmetry)
 
 
-            R_refine = rot_from_params_file(fnames_dict["output_refine"])
+            R_refine = rot_from_params_file(fnames_dict['output_refine'])
             err_ang1_refine, err_ang2_refine = measure_error(R_ref, 
                                 R_refine.transpose(), symmetry)
 
 
             # Emalign timing
-            with open(fnames_dict["timing_norefine"], 'r') as f:
+            with open(fnames_dict['timing_norefine'], 'r') as f:
                 t_norefine = float(f.readline())
               
-            with open(fnames_dict["timing_refine"], 'r') as f:
+            with open(fnames_dict['timing_refine'], 'r') as f:
                 t_refine = float(f.readline())
     
             
             # Save results
-            vol_ref = src.read_write.read_mrc(fnames_dict["ref"])
+            vol_ref = src.read_write.read_mrc(fnames_dict['ref'])
             sz_orig = vol_ref.shape[0]
             
             test_result = [symmetry, emdid, sz_orig, err_ang1_norefine, 
@@ -880,10 +906,10 @@ def results_comparison_to_eman():
             results.append(test_result)
 
             # Plot FSCs
-            # vol_ref = src.read_write.read_mrc(fnames_dict["ref"])
-            # vol_eman = src.read_write.read_mrc(fnames_dict["aligned_eman"])
-            # vol_norefine = src.read_write.read_mrc(fnames_dict["aligned_norefine"])
-            # vol_refine = src.read_write.read_mrc(fnames_dict["aligned_refine"])
+            # vol_ref = src.read_write.read_mrc(fnames_dict['ref'])
+            # vol_eman = src.read_write.read_mrc(fnames_dict['aligned_eman'])
+            # vol_norefine = src.read_write.read_mrc(fnames_dict['aligned_norefine'])
+            # vol_refine = src.read_write.read_mrc(fnames_dict['aligned_refine'])
             
             # resAa, resAb, resAc, fig = src.fsc.plotFSC3(vol_ref, vol_eman, 
             #                   vol_ref, vol_norefine, 
@@ -891,7 +917,7 @@ def results_comparison_to_eman():
             #                   labels = ['eman','no refine','refine'],
             #                   cutoff = 0.5, 
             #                   pixelsize=(test_densities[testidx])[2],
-            #                   figname = "fsc_{0:s}.png".format(emdid))
+            #                   figname = 'fsc_{0:s}.png'.format(emdid))
             
   
     if not disable_preprocess:
@@ -904,8 +930,8 @@ def results_comparison_to_eman():
                         'err_ang1_norefine','err_ang2_norefine','t_norefine',
                         'err_ang1_refine','err_ang2_refine','t_refine',
                         'err_ang1_eman', 'err_ang2_eman', 't_eman'])    
-        df.to_csv("results_eman.txt")
-        df.to_excel("results_eman.xlsx")
+        df.to_csv('results_eman.txt')
+        df.to_excel('results_eman.xlsx')
 
 #%%
 def results_noise():
@@ -915,8 +941,8 @@ def results_noise():
     
     if not disable_preprocess:
         # Create EMAN script file
-        eman_script =  open("run_eman_snr_test.sh", 'w')
-        emalign_script =  open("run_emalign_snr_test.sh", 'w')
+        eman_script =  open('run_eman_snr_test.sh', 'w')
+        emalign_script =  open('run_emalign_snr_test.sh', 'w')
 
 
         #Generate two noiseless density maps
@@ -946,7 +972,7 @@ def results_noise():
         snr = SNR_list[testidx]
         
         # Generate filenames
-        working_dir = "./noise_test"   
+        working_dir = './noise_test'
         fnames_dict={}        
         fnames_dict['ref_noisy'] = os.path.join(working_dir,'map_{0:d}_ref.mrc'.format(testidx))
         fnames_dict['transformed'] = os.path.join(working_dir,'map_{0:d}_transformed.mrc'.format(testidx))
@@ -954,7 +980,7 @@ def results_noise():
         fnames_dict['aligned_refine'] = os.path.join(working_dir,'map_{0:d}_aligned_refine.mrc'.format(testidx))
         fnames_dict['aligned_eman'] = os.path.join(working_dir,'map_{0:d}_aligned_eman.mrc'.format(testidx))
         fnames_dict['ref_rot'] = os.path.join(working_dir,'ref_rot_{0:d}.txt'.format(testidx))
-        fnames_dict['output_eman'] = os.path.join(working_dir,'params_eman_{0:d}.txt'.format(testidx))        
+        fnames_dict['params_eman'] = os.path.join(working_dir,'params_eman_{0:d}.txt'.format(testidx))        
         fnames_dict['timing_eman'] = os.path.join(working_dir,'timing_eman_{0:d}.txt'.format(testidx))
         fnames_dict['output_norefine'] = os.path.join(working_dir,'output_norefine_{0:d}.txt'.format(testidx))
         fnames_dict['output_refine'] = os.path.join(working_dir,'output_refine_{0:d}.txt'.format(testidx))
@@ -977,25 +1003,25 @@ def results_noise():
             plt.show()
             
             # Save volumes to align        
-            src.read_write.write_mrc(fnames_dict["ref_noisy"], vol_noisy)                
-            src.read_write.write_mrc(fnames_dict["transformed"], vol_transformed_noisy)                
+            src.read_write.write_mrc(fnames_dict['ref_noisy'], vol_noisy)                
+            src.read_write.write_mrc(fnames_dict['transformed'], vol_transformed_noisy)                
     
             # Save rotation paramters    
-            with open(fnames_dict["ref_rot"], 'w') as f:
-                f.write(str(R)+"\n")
+            with open(fnames_dict['ref_rot'], 'w') as f:
+                f.write(str(R)+'\n')
                     
                 # Generate EMAN script        
        
-            eman_script.write("start=`date +%s`\n")
-            eman_script.write(("e2proc3d.py {0:s} {1:s} --alignref {2:s} " + 
-                          "--align rotate_translate_3d_tree "+
-                          "--verbose 1 > {3:s}\n"
-                          ).format(fnames_dict["transformed"],
-                                   fnames_dict["aligned_eman"],
-                                   fnames_dict["ref_noisy"], fnames_dict["output_eman"]))
-            eman_script.write("end=`date +%s`\n")
-            eman_script.write(("echo `expr $end - $start` > {0:s}\n\n"
-                               ).format(fnames_dict["timing_eman"]))
+            eman_script.write('start=`date +%s`\n')
+            eman_script.write(('e2proc3d.py {0:s} {1:s} --alignref {2:s} ' + 
+                          '--align rotate_translate_3d_tree '+
+                          '--verbose 1 > {3:s}\n'
+                          ).format(fnames_dict['transformed'],
+                                   fnames_dict['aligned_eman'],
+                                   fnames_dict['ref_noisy'], fnames_dict['params_eman']))
+            eman_script.write('end=`date +%s`\n')
+            eman_script.write(('echo `expr $end - $start` > {0:s}\n\n'
+                               ).format(fnames_dict['timing_eman'))
         
             eman_script.flush()
             
@@ -1018,13 +1044,13 @@ def results_noise():
                                     fnames_dict['aligned_norefine'], sz_ds, 
                                     fnames_dict['output_norefine'])
                                         
-            emalign_script.write("echo Running test {0:d} snr={1:5.4f}\n\n".format(testidx,snr))
-            emalign_script.write("start=`date +%s`\n")
-            emalign_script.write(align_cmd+"\n")
-            emalign_script.write("end=`date +%s`\n")
-            emalign_script.write(("echo `expr $end - $start` > {0:s}\n"
-                                   ).format(fnames_dict["timing_norefine"]))
-            emalign_script.write("\n")
+            emalign_script.write('echo Running test {0:d} snr={1:5.4f}\n\n'.format(testidx,snr))
+            emalign_script.write('start=`date +%s`\n')
+            emalign_script.write(align_cmd+'\n')
+            emalign_script.write('end=`date +%s`\n')
+            emalign_script.write(('echo `expr $end - $start` > {0:s}\n'
+                                   ).format(fnames_dict['timing_norefine']))
+            emalign_script.write('\n')
        
         
             # Run alignment with refiment
@@ -1036,22 +1062,22 @@ def results_noise():
                                     fnames_dict['aligned_refine'], sz_ds, 
                                     fnames_dict['output_refine'])
                                     
-            emalign_script.write("start=`date +%s`\n")
-            emalign_script.write(align_cmd+"\n")
-            emalign_script.write("end=`date +%s`\n")
-            emalign_script.write(("echo `expr $end - $start` > {0:s}\n"
-                                  ).format(fnames_dict["timing_refine"]))
-            emalign_script.write("\n\n")
+            emalign_script.write('start=`date +%s`\n')
+            emalign_script.write(align_cmd+'\n')
+            emalign_script.write('end=`date +%s`\n')
+            emalign_script.write(('echo `expr $end - $start` > {0:s}\n'
+                                  ).format(fnames_dict['timing_refine']))
+            emalign_script.write('\n\n')
         
             emalign_script.flush()
             
         if not disable_analysis:
         # Parse outputs
         
-            R_ref = rot_from_params_file(fnames_dict["ref_rot"])        
+            R_ref = rot_from_params_file(fnames_dict['ref_rot'])
             
             # Eman accuracy
-            with open(fnames_dict["output_eman"], 'r') as f:
+            with open(fnames_dict['params_eman'], 'r') as f:
                 lines = f.readlines() 
                 res = (parse.search("'az':{0:g},'alt':{},'phi':{},'tx'",lines[1]))
                 az = float(res[0])
@@ -1069,12 +1095,12 @@ def results_noise():
                 err_ang1_eman, err_ang2_eman = measure_error(R_ref,R_eman,'C1')
                 
             # Eman Timing
-            with open(fnames_dict["timing_eman"], 'r') as f:
+            with open(fnames_dict['timing_eman'], 'r') as f:
                 t_eman = float(f.readline())
               
             # Emalign accuracy
             try:
-                R_norefine = rot_from_params_file(fnames_dict["output_norefine"])
+                R_norefine = rot_from_params_file(fnames_dict['output_norefine'])
                 err_ang1_norefine, err_ang2_norefine = measure_error(R_ref, 
                                                 R_norefine.transpose(), 'C1')
             except:
@@ -1082,7 +1108,7 @@ def results_noise():
                 err_ang2_norefine = -1
 
             try:
-                R_refine = rot_from_params_file(fnames_dict["output_refine"])
+                R_refine = rot_from_params_file(fnames_dict['output_refine'])
                 err_ang1_refine, err_ang2_refine = measure_error(R_ref, 
                                     R_refine.transpose(), 'C1')
             except:
@@ -1090,15 +1116,15 @@ def results_noise():
                 err_ang2_refine = -1
 
             # Emalign timing
-            with open(fnames_dict["timing_norefine"], 'r') as f:
+            with open(fnames_dict['timing_norefine'], 'r') as f:
                 t_norefine = float(f.readline())
               
-            with open(fnames_dict["timing_refine"], 'r') as f:
+            with open(fnames_dict['timing_refine'], 'r') as f:
                 t_refine = float(f.readline())
     
             
             # Save results
-            #vol_ref = src.read_write.read_mrc(fnames_dict["ref_noisy"])
+            #vol_ref = src.read_write.read_mrc(fnames_dict['ref_noisy'])
             #sz_orig = vol_ref.shape[0]
             
             test_result = [snr, err_ang1_norefine, 
@@ -1110,10 +1136,10 @@ def results_noise():
             results.append(test_result)
 
             # Plot FSCs
-            # vol_ref = src.read_write.read_mrc(fnames_dict["ref"])
-            # vol_eman = src.read_write.read_mrc(fnames_dict["aligned_eman"])
-            # vol_norefine = src.read_write.read_mrc(fnames_dict["aligned_norefine"])
-            # vol_refine = src.read_write.read_mrc(fnames_dict["aligned_refine"])
+            # vol_ref = src.read_write.read_mrc(fnames_dict['ref'])
+            # vol_eman = src.read_write.read_mrc(fnames_dict['aligned_eman'])
+            # vol_norefine = src.read_write.read_mrc(fnames_dict['aligned_norefine'])
+            # vol_refine = src.read_write.read_mrc(fnames_dict['aligned_refine'])
             
             # resAa, resAb, resAc, fig = src.fsc.plotFSC3(vol_ref, vol_eman, 
             #                   vol_ref, vol_norefine, 
@@ -1121,7 +1147,7 @@ def results_noise():
             #                   labels = ['eman','no refine','refine'],
             #                   cutoff = 0.5, 
             #                   pixelsize=(test_densities[testidx])[2],
-            #                   figname = "fsc_{0:s}.png".format(emdid))
+            #                   figname = 'fsc_{0:s}.png'.format(emdid))
             
   
     if not disable_preprocess:
@@ -1134,8 +1160,8 @@ def results_noise():
                         'err_ang2_norefine','t_norefine',
                         'err_ang1_refine','err_ang2_refine','t_refine',
                         'err_ang1_eman', 'err_ang2_eman', 't_eman'])    
-        df.to_csv("results_snr.txt")
-        df.to_excel("results_snr.xlsx")
+        df.to_csv('results_snr.txt')
+        df.to_excel('results_snr.xlsx')
 
 def test_stability():
     '''
@@ -1180,7 +1206,7 @@ def test_stability():
 
 #results = results_varying_downsampling()
 #results_varying_Nprojs()
-results_comparison_to_eman()
+results_comparison_to_other_packages()
 #results_noise()
 
 #test_stability()
