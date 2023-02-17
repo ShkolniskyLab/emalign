@@ -2,11 +2,11 @@
 
 A algorithm for aligning rotation, reflection, and translation between volumes. 
 
-Current version: 1.0.0
+Current version: 1.0.3
 
 Project's homepage: https://github.com/ShkolniskyLab/emalign
 
-Date: 03/2022
+Date: 12/2022
 
 Please cite the following paper when using this package: 
 XXX
@@ -81,5 +81,4 @@ $  emalign -h
 ```
 
 for help.
-
 

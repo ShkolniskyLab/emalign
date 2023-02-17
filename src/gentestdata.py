@@ -20,8 +20,8 @@ import shutil
 
 def gentestdata(ref_mrc_filename,transformed_mrc_filename,emdID=2660,verbose=1):
     """
-    gentestdata  generates test volumes for the function AlignVolumes in 
-    AlignVolumes3d.
+    gentestdata  generates test volumes for the function align_volumes in 
+    align_volumes_3d.
     
     This function fetchs the map file (MRC format) with the given emdID 
     (integer) from EMDB.
@@ -31,11 +31,10 @@ def gentestdata(ref_mrc_filename,transformed_mrc_filename,emdID=2660,verbose=1):
     """
     np.random.seed(2021)
     
-    logging.basicConfig(level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger()
     logger.disabled = False
-    if verbose == 0 : logger.disabled = True  
+    if verbose == 0: 
+        logger.disabled = True  
     
     # Read molecule:    
     logger.info('Downloading the volume from EMDB')
@@ -44,7 +43,7 @@ def gentestdata(ref_mrc_filename,transformed_mrc_filename,emdID=2660,verbose=1):
     
     vol = np.ascontiguousarray(mrcfile.open(ref_mrc_filename).data.T)
     
-    n_ds = 129
+    n_ds = 128
     logger.info('Downsampling volume to %i pixels', n_ds)
     vol = cryo_downsample(vol,(n_ds, n_ds, n_ds)).astype('float64')
 

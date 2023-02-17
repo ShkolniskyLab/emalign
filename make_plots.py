@@ -377,7 +377,7 @@ std_err_eman = (df["err_ang1_eman"]+df["err_ang2_eman"]).std()
 
 # Sppedup
 speedup_norefine = ((df["t_eman"]-df["t_norefine"])/df["t_eman"]).mean()
-speedup_refine = ((df["t_refine"]-df["t_eman"])/df["t_refine"]).mean()
+speedup_refine = ((df["t_eman"]-df["t_refine"])/df["t_eman"]).mean()
 
 print("norefine mean error = {0:7.4f}    std = {1:7.4f}".format(
     mean_err_norefine,std_err_norefine))
@@ -389,4 +389,4 @@ print("eman mean error = {0:7.4f}    std = {1:7.4f}".format(
     mean_err_eman,std_err_eman))
 
 print("Norefine is faster by eman in {0:7.4f} percent".format(speedup_norefine*100))
-print("Refine is slower than eman in {0:7.4f} percent".format(speedup_refine*100))
+print("Refine is faster than eman in {0:7.4f} percent".format(speedup_refine*100))

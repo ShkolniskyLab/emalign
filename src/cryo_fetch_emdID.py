@@ -22,11 +22,12 @@ def cryo_fetch_emdID(emdID,mrc_filename,verbose=1):
         
     """
        
-    logging.basicConfig(level=logging.INFO,\
-                        format='%(asctime)s %(levelname)s %(message)s')
+    #logging.basicConfig(level=logging.INFO,\
+    #                    format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger()
     logger.disabled = False
-    if verbose == 0 : logger.disabled = True  
+    if verbose == 0: 
+        logger.disabled = True  
         
     emdIDstr = str(emdID)
     

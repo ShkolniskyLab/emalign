@@ -197,9 +197,9 @@ def get_args():
     while verbose == 0:
         verbose_in = input('Display detailed progress? [y/n]: ')
         if verbose_in.strip().lower().startswith('y'):
-            verbose = True
+            verbose = 1
         elif verbose_in.strip().lower().startswith('n'):
-            verbose = False
+            verbose = 0
             break
         else:
             print("Please choose y/n.")
@@ -227,7 +227,7 @@ def check_for_newer_version():
     else:  # Use pip to determine the installed version.
         import pkg_resources  # part of setuptools
         current_version = pkg_resources.require(name)[0].version
-        if latest_version != current_version:
+        if latest_version > current_version:
             print(
                 "NOTE: you are running an old version of %s (%s). A newer version (%s) is available, please upgrade." % (
                     name, current_version, latest_version))
