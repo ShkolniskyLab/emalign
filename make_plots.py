@@ -248,9 +248,9 @@ plt.show()
 
 #%%
 # Figure 7:
-# Error of eman vs refined emalign
+# Error of eman and xmipp vs refined emalign
 
-df = pd.read_excel("results_eman.xlsx")
+df = pd.read_excel("results_comparisons.xlsx")
 
 barWidth = 15
  
@@ -279,7 +279,7 @@ plt.grid(visible=True, which='major', color='k', linestyle='-', linewidth=0.4)
 plt.grid(visible=True, which='minor', color='k', linestyle='--', linewidth=0.2)
 plt.legend()
 plt.subplots_adjust(wspace=0.4)
-plt.savefig(make_full_figname('eman_comparison_accuracy.png'), dpi=300)
+plt.savefig(make_full_figname('comparison_accuracy.png'), dpi=300)
 plt.show()
 
 
@@ -364,9 +364,33 @@ plt.legend()
 plt.savefig(make_full_figname('eman_comparison_timing.png'), dpi=300)
 plt.show()
 
+#%% Create a table summarizing the results
+df = pd.read_excel("results_comparisons.xlsx")
+
+# Create new columns with the total error for each method.
+df['err_emalign_refine'] = df['err_ang1_refine'] + df['err_ang2_refine']
+df['err_eman'] = df['err_ang1_eman'] + df['err_ang2_eman']
+df['err_xmipp'] = df['err_ang1_xmipp'] + df['err_ang2_xmipp']
+
+
+df_summary = df[['symmetry', 'emdid', 
+                 'err_emalign_refine', 'err_eman', 'err_xmipp',
+                 't_refine','t_eman','t_xmipp']]
+
+
+latex_code = df_summary.to_latex(index=False,
+                header = ['symmetry', 'EMDID', 'EMalign(R)', 'EMAN', 'XMIPP', 
+                          'EMalign(R)', 'EMAN', 'XMIPP'],
+                float_format = '%.2f',
+                column_format = 'l r r r r r r r r')
+
+with open('output.tex', 'w') as f:
+    f.write(latex_code)
+
+
 #%% Create a table summarizing the comparison to EMAN
 
-df = pd.read_excel("results_eman.xlsx")
+df = pd.read_excel("results_comparisons.xlsx")
 
 mean_err_norefine = (df["err_ang1_norefine"]+df["err_ang2_norefine"]).mean()
 std_err_norefine = (df["err_ang1_norefine"]+df["err_ang2_norefine"]).std()

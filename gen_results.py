@@ -50,6 +50,8 @@ test_densities = [
 
 
 emalign_cmd = shutil. which('emalign')
+if emalign_cmd is None:
+    raise NameError('Cannot find emalign command')
 
 # Setup logger
 for handler in logging.root.handlers[:]:
@@ -698,8 +700,8 @@ def results_comparison_to_other_packages():
     # Compare the perfomance of our algorithm to that of EMAN and XMIPP
     init_random_state()
     
-    disable_preprocess = False
-    disable_analysis = True
+    disable_preprocess = True
+    disable_analysis = False
     
     if not disable_preprocess:
         # Create EMAN script file
@@ -873,7 +875,20 @@ def results_comparison_to_other_packages():
             # Eman Timing
             with open(fnames_dict['timing_eman'], 'r') as f:
                 t_eman = float(f.readline())
-              
+
+                
+            # xmipp accuracy
+            with open(fnames_dict['params_xmipp'], 'r') as f:
+                line = f.readline()                
+                rot, tilt, psi= map(float, line.strip().split(',')[:3])                           
+                R_xmipp = ((scipy.spatial.transform.Rotation.from_euler('zxz',
+                      [rot,tilt,psi], degrees=True)).as_matrix()).transpose()
+                err_ang1_xmipp, err_ang2_xmipp = measure_error(R_ref,R_xmipp,symmetry)
+
+            # xmipp Timing
+            with open(fnames_dict['timing_xmipp'], 'r') as f:
+                t_xmipp = float(f.readline())
+            
             # Emalign accuracy
             R_norefine = rot_from_params_file(fnames_dict['output_norefine'])
             err_ang1_norefine, err_ang2_norefine = measure_error(R_ref, 
@@ -900,7 +915,8 @@ def results_comparison_to_other_packages():
             test_result = [symmetry, emdid, sz_orig, err_ang1_norefine, 
                            err_ang2_norefine, t_norefine, err_ang1_refine, 
                            err_ang2_refine, t_refine,err_ang1_eman, 
-                           err_ang2_eman, t_eman]
+                           err_ang2_eman, t_eman, err_ang1_xmipp, 
+                           err_ang2_xmipp, t_xmipp]
                                     
             print(test_result)
             results.append(test_result)
@@ -922,6 +938,7 @@ def results_comparison_to_other_packages():
   
     if not disable_preprocess:
         eman_script.close()
+        xmipp_script.close()
         emalign_script.close()
     
 
@@ -929,19 +946,21 @@ def results_comparison_to_other_packages():
         df = pd.DataFrame(results, columns = ['symmetry','emdid','size_orig',
                         'err_ang1_norefine','err_ang2_norefine','t_norefine',
                         'err_ang1_refine','err_ang2_refine','t_refine',
-                        'err_ang1_eman', 'err_ang2_eman', 't_eman'])    
-        df.to_csv('results_eman.txt')
-        df.to_excel('results_eman.xlsx')
+                        'err_ang1_eman', 'err_ang2_eman', 't_eman',
+                        'err_ang1_xmipp', 'err_ang2_xmipp', 't_xmipp'])    
+        df.to_csv('results_comparisons.txt')
+        df.to_excel('results_comparisons.xlsx')
 
 #%%
 def results_noise():
 
-    disable_preprocess = False
-    disable_analysis = True
+    disable_preprocess = True
+    disable_analysis = False
     
     if not disable_preprocess:
         # Create EMAN script file
         eman_script =  open('run_eman_snr_test.sh', 'w')
+        xmipp_script = open('run_xmipp_snr_test.sh', 'w')
         emalign_script =  open('run_emalign_snr_test.sh', 'w')
 
 
@@ -976,17 +995,26 @@ def results_noise():
         fnames_dict={}        
         fnames_dict['ref_noisy'] = os.path.join(working_dir,'map_{0:d}_ref.mrc'.format(testidx))
         fnames_dict['transformed'] = os.path.join(working_dir,'map_{0:d}_transformed.mrc'.format(testidx))
+        fnames_dict['ref_rot'] = os.path.join(working_dir,'ref_rot_{0:d}.txt'.format(testidx))
+        
+        # EMalign output
         fnames_dict['aligned_norefine'] = os.path.join(working_dir,'map_{0:d}_aligned_norefine.mrc'.format(testidx))
         fnames_dict['aligned_refine'] = os.path.join(working_dir,'map_{0:d}_aligned_refine.mrc'.format(testidx))
-        fnames_dict['aligned_eman'] = os.path.join(working_dir,'map_{0:d}_aligned_eman.mrc'.format(testidx))
-        fnames_dict['ref_rot'] = os.path.join(working_dir,'ref_rot_{0:d}.txt'.format(testidx))
-        fnames_dict['params_eman'] = os.path.join(working_dir,'params_eman_{0:d}.txt'.format(testidx))        
-        fnames_dict['timing_eman'] = os.path.join(working_dir,'timing_eman_{0:d}.txt'.format(testidx))
         fnames_dict['output_norefine'] = os.path.join(working_dir,'output_norefine_{0:d}.txt'.format(testidx))
         fnames_dict['output_refine'] = os.path.join(working_dir,'output_refine_{0:d}.txt'.format(testidx))
         fnames_dict['timing_norefine'] = os.path.join(working_dir,'timing_norefine_{0:d}.txt'.format(testidx))
         fnames_dict['timing_refine'] = os.path.join(working_dir,'timing_refine_{0:d}.txt'.format(testidx))
-                
+
+        # EMAN output
+        fnames_dict['aligned_eman'] = os.path.join(working_dir,'map_{0:d}_aligned_eman.mrc'.format(testidx))
+        fnames_dict['params_eman'] = os.path.join(working_dir,'params_eman_{0:d}.txt'.format(testidx))        
+        fnames_dict['timing_eman'] = os.path.join(working_dir,'timing_eman_{0:d}.txt'.format(testidx))
+
+        # XMIPP output
+        fnames_dict['aligned_xmipp'] = os.path.join(working_dir,'map_{0:d}_aligned_xmipp.mrc'.format(testidx))
+        fnames_dict['params_xmipp'] = os.path.join(working_dir,'params_xmipp_{0:d}.txt'.format(testidx))        
+        fnames_dict['timing_xmipp'] = os.path.join(working_dir,'timing_xmipp_{0:d}.txt'.format(testidx))
+                            
         logger.info('Test %d/%d snr=%5.4f',testidx+1,len(SNR_list),snr)
             
         if not disable_preprocess:
@@ -1010,28 +1038,33 @@ def results_noise():
             with open(fnames_dict['ref_rot'], 'w') as f:
                 f.write(str(R)+'\n')
                     
-                # Generate EMAN script        
-       
+            # Generate EMAN script               
             eman_script.write('start=`date +%s`\n')
             eman_script.write(('e2proc3d.py {0:s} {1:s} --alignref {2:s} ' + 
                           '--align rotate_translate_3d_tree '+
                           '--verbose 1 > {3:s}\n'
                           ).format(fnames_dict['transformed'],
                                    fnames_dict['aligned_eman'],
-                                   fnames_dict['ref_noisy'], fnames_dict['params_eman']))
+                                   fnames_dict['ref_noisy'], 
+                                   fnames_dict['params_eman']))
             eman_script.write('end=`date +%s`\n')
             eman_script.write(('echo `expr $end - $start` > {0:s}\n\n'
-                               ).format(fnames_dict['timing_eman'))
+                               ).format(fnames_dict['timing_eman']))
         
             eman_script.flush()
             
-            ###################################################################
-            # You have to run the EMAN script run_eman.sh from 
-            # command line, It is not possible ti run it from within Pyhton since
-            # it uses a different conda environment
-            ###################################################################
-        
-        
+            # Generate XMIPP script  
+            xmipp_script.write('start=`date +%s`\n')
+            xmipp_script.write(('xmipp_volume_align --i1 {0:s} --i2 {1:s} ' + 
+                  '--apply {2:s} --frm --dontScale --store {3:s}\n').format(
+                  fnames_dict['ref_noisy'],fnames_dict['transformed'],
+                  fnames_dict['aligned_xmipp'],fnames_dict['params_xmipp']))
+            xmipp_script.write('end=`date +%s`\n')
+            xmipp_script.write(('echo `expr $end - $start` > {0:s}\n'
+                   ).format(fnames_dict['timing_xmipp']))
+
+            xmipp_script.flush()
+            
             # Generate emalign script
             sz_ds = 64
             n_projs = 30
@@ -1074,6 +1107,15 @@ def results_noise():
             emalign_script.write('\n\n')
         
             emalign_script.flush()
+
+            ###################################################################
+            # You have to run the test scripts 
+            #    run_eman_snr_test.sh 
+            #    run_xmipp_snr_test 
+            #    run_emalign_snr_test.sh
+            # from command line, It is not possible it run it from within 
+            # Pyhton since the first two use a different conda environment.
+            ###################################################################
             
         if not disable_analysis:
         # Parse outputs
@@ -1102,6 +1144,19 @@ def results_noise():
             with open(fnames_dict['timing_eman'], 'r') as f:
                 t_eman = float(f.readline())
               
+                
+            # xmipp accuracy
+            with open(fnames_dict['params_xmipp'], 'r') as f:
+                line = f.readline()                
+                rot, tilt, psi= map(float, line.strip().split(',')[:3])                           
+                R_xmipp = ((scipy.spatial.transform.Rotation.from_euler('zxz',
+                [rot,tilt,psi], degrees=True)).as_matrix()).transpose()
+                err_ang1_xmipp, err_ang2_xmipp = measure_error(R_ref,R_xmipp,'C1')
+
+            # xmipp Timing
+            with open(fnames_dict['timing_xmipp'], 'r') as f:
+                t_xmipp = float(f.readline())
+                          
             # Emalign accuracy
             try:
                 R_norefine = rot_from_params_file(fnames_dict['output_norefine'])
@@ -1134,7 +1189,8 @@ def results_noise():
             test_result = [snr, err_ang1_norefine, 
                            err_ang2_norefine, t_norefine, err_ang1_refine, 
                            err_ang2_refine, t_refine,err_ang1_eman, 
-                           err_ang2_eman, t_eman]
+                           err_ang2_eman, t_eman, 
+                           err_ang1_xmipp, err_ang2_xmipp, t_xmipp]
                                     
             print(test_result)
             results.append(test_result)
@@ -1156,6 +1212,7 @@ def results_noise():
   
     if not disable_preprocess:
         eman_script.close()
+        xmipp_script.close()
         emalign_script.close()
     
 
@@ -1163,7 +1220,8 @@ def results_noise():
         df = pd.DataFrame(results, columns = ['snr','err_ang1_norefine',
                         'err_ang2_norefine','t_norefine',
                         'err_ang1_refine','err_ang2_refine','t_refine',
-                        'err_ang1_eman', 'err_ang2_eman', 't_eman'])    
+                        'err_ang1_eman', 'err_ang2_eman', 't_eman',
+                        'err_ang1_xmipp', 'err_ang2_xmipp', 't_xmipp'])    
         df.to_csv('results_snr.txt')
         df.to_excel('results_snr.xlsx')
 
@@ -1212,7 +1270,7 @@ def test_stability():
 
 #results_varying_downsampling()
 #results_varying_Nprojs()
-results_comparison_to_other_packages()
-#results_noise()
+#results_comparison_to_other_packages()
+results_noise()
 
 #test_stability()
