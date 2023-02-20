@@ -954,8 +954,8 @@ def results_comparison_to_other_packages():
 #%%
 def results_noise():
 
-    disable_preprocess = True
-    disable_analysis = False
+    disable_preprocess = False
+    disable_analysis = True
     
     if not disable_preprocess:
         # Create EMAN script file
@@ -984,7 +984,7 @@ def results_noise():
 
 
     results = []    
-    SNR_list = [10000, 1, 1/2, 1/8, 1/32, 1/64, 1/128, 1/256, 1/512, 1/1024]
+    SNR_list = [10000, 1, 1/2, 1/8, 1/32, 1/64, 1/128]
     
     for testidx in range(len(SNR_list)):
         
@@ -1018,16 +1018,20 @@ def results_noise():
         logger.info('Test %d/%d snr=%5.4f',testidx+1,len(SNR_list),snr)
             
         if not disable_preprocess:
-                        
-            sigma = np.sqrt(1/snr)
-            
-            n1 = sigma*np.random.randn(*vol.shape)/np.sqrt(vol.size)
-            n2 = sigma*np.random.randn(*vol_transformed.shape)/np.sqrt(vol_transformed.size)
+                                    
+            sigma=np.sqrt(np.var(vol.ravel())/snr)
+
+            n1 = sigma*np.random.randn(*vol.shape)
+            n2 = sigma*np.random.randn(*vol_transformed.shape)
             vol_noisy = vol+n1
             vol_transformed_noisy = vol_transformed+n2
-            
+               
             plt.imshow(vol_noisy[64])
-            plt.imshow(vol_transformed_noisy[64])
+            #plt.imshow(vol_transformed_noisy[64])
+            plt.axis('off')            
+            plt.axis('image')
+            plt.savefig('./noise_test/noisy_slice_{0:d}.png'.format(testidx), 
+                        bbox_inches='tight',dpi=300)
             plt.show()
             
             # Save volumes to align        
