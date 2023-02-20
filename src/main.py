@@ -7,6 +7,9 @@ from src.align_volumes_3d import align_volumes
 from src.read_write import read_mrc, copy_and_rename
 from src.gentestdata import gentestdata
 import mrcfile
+import scipy.signal
+
+
 #from src.common_finufft import cryo_downsample
 #import os
 #import shutil
@@ -57,7 +60,9 @@ def main():
 
     else:  # User didn't enter arguments, use interactive mode to get arguments.
         args = parse_args()  # Initiate args with default values.
-        args.vol1, args.vol2, args.output_vol, args.downsample, args.n_projs, args.no_refine, args.output_parameters, args.verbose = get_args()
+        args.vol1, args.vol2, args.output_vol, args.downsample, args.n_projs,\
+            args.apply_filtering, args.no_refine, args.output_parameters,\
+            args.verbose = get_args()
 
     # Check newer version
     try:
@@ -88,7 +93,14 @@ def main():
         
     if (vol1.shape[0] != vol2.shape[0]):
         raise ValueError("Input volumes must be of same dimensions")
-    
+
+
+    # Filter volumes
+    if args.apply_filtering:
+       logger.info("Lowpass filtering input volumes")
+       vol1 = scipy.signal.wiener(vol1)
+       vol2 = scipy.signal.wiener(vol2)
+
     # If we decide to downsample them to the same size
     # n1 = vol1.shape[0]
     # n2 = vol2.shape[0]

@@ -17,7 +17,8 @@ def parse_args():
     parser.add_argument('--downsample', help='Dimension to downsample input volumes', default=DEFAULT_DOWNSAMPLE,
                         type=check_positive_int)
     parser.add_argument('--n-projs', help='Number of projections', default=DEFAULT_N_PROJS,
-                        type=check_positive_int)
+                        type=check_positive_int)     
+    parser.add_argument('--apply-filtering', help='Lowpass filter input volumes (helps when input is noisy)', action='store_true', default=False)    
     parser.add_argument('--no-refine', help='Skip optimization to refine aligment parameters', action='store_true', default=False)
     parser.add_argument('--output-parameters', help='Full path of output txt file for alignment parameters', default=None,
                         type=check_txt_file_not_exist)
@@ -151,6 +152,19 @@ def get_args():
         except ValueError:
             print("Number of projections must be a positive integer.")
             
+    # Ask whether to lowpass filter input volumes
+    while True:
+        apply_filtering = input('Do you want to lowpass filter input volumes [y/n]')
+
+        if any(apply_filtering.lower() == f for f in ["yes", 'y', '1', 'ye']):
+            apply_filtering = True
+            break
+        elif any(apply_filtering.lower() == f for f in ['no', 'n', '0']):
+            apply_filtering = False
+            break
+        else:
+            print("Please choose y/n.")
+
     # Ask to skip refinement of alignment parameters
     while True:
         no_refine = input('Do you want to refine alignment parameters [y/n]')
@@ -204,7 +218,8 @@ def get_args():
         else:
             print("Please choose y/n.")
 
-    return vol1, vol2, output_vol, downsample, n_projs, no_refine, output_parameters, verbose
+    return vol1, vol2, output_vol, downsample, n_projs, apply_filtering,\
+        no_refine, output_parameters, verbose
 
 
 def check_for_newer_version():
