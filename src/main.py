@@ -7,7 +7,7 @@ from src.align_volumes_3d import align_volumes
 from src.read_write import read_mrc, copy_and_rename
 from src.gentestdata import gentestdata
 import mrcfile
-import scipy.signal
+import scipy.ndimage
 
 
 #from src.common_finufft import cryo_downsample
@@ -98,8 +98,8 @@ def main():
     # Filter volumes
     if args.apply_filtering:
        logger.info("Lowpass filtering input volumes")
-       vol1 = scipy.signal.wiener(vol1)
-       vol2 = scipy.signal.wiener(vol2)
+       vol1 = scipy.ndimage.gaussian_filter(vol1,1.5)
+       vol2 = scipy.ndimage.gaussian_filter(vol2,1.5)
 
     # If we decide to downsample them to the same size
     # n1 = vol1.shape[0]
