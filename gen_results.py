@@ -954,8 +954,8 @@ def results_comparison_to_other_packages():
 #%%
 def results_noise():
 
-    disable_preprocess = False
-    disable_analysis = True
+    disable_preprocess = True
+    disable_analysis = False
     
     if not disable_preprocess:
         # Create EMAN script file
@@ -984,7 +984,7 @@ def results_noise():
 
 
     results = []    
-    SNR_list = [10000, 1, 1/2, 1/8, 1/32, 1/64, 1/128]
+    SNR_list = [10000, 1, 1/2, 1/8, 1/32, 1/64, 1/128, 1/256, 1/512]
     
     for testidx in range(len(SNR_list)):
         
@@ -1274,7 +1274,7 @@ def test_stability():
 
 #results_varying_downsampling()
 #results_varying_Nprojs()
-#results_comparison_to_other_packages()
-results_noise()
+results_comparison_to_other_packages()
+#results_noise()
 
 #test_stability()
