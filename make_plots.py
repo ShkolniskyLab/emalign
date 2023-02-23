@@ -368,49 +368,100 @@ plt.show()
 df = pd.read_excel("results_comparisons.xlsx")
 
 # Create new columns with the total error for each method.
+df['err_emalign_norefine'] = df['err_ang1_norefine'] + df['err_ang2_norefine']
 df['err_emalign_refine'] = df['err_ang1_refine'] + df['err_ang2_refine']
 df['err_eman'] = df['err_ang1_eman'] + df['err_ang2_eman']
 df['err_xmipp'] = df['err_ang1_xmipp'] + df['err_ang2_xmipp']
 
 
-df_summary = df[['symmetry', 'emdid', 
-                 'err_emalign_refine', 'err_eman', 'err_xmipp',
-                 't_refine','t_eman','t_xmipp']]
+df_accuracy = df[['symmetry', 'emdid', 'err_emalign_norefine',
+                 'err_emalign_refine', 'err_eman', 'err_xmipp']]
+
+mean_row = {'symmetry': 'mean', 'emdid': '', 
+                 'err_emalign_norefine': df_accuracy['err_emalign_norefine'].mean(), 
+                 'err_emalign_refine': df_accuracy['err_emalign_refine'].mean(), 
+                 'err_eman' : df_accuracy['err_eman'].mean(), 
+                 'err_xmipp' : df_accuracy['err_xmipp'].mean()}
 
 
-latex_code = df_summary.to_latex(index=False,
-                header = ['symmetry', 'EMDID', 'EMalign(R)', 'EMAN', 'XMIPP', 
-                          'EMalign(R)', 'EMAN', 'XMIPP'],
-                float_format = '%.2f',
-                column_format = 'l r r r r r r r r')
+std_row = {'symmetry': 'std', 'emdid': '', 
+                 'err_emalign_norefine': df_accuracy['err_emalign_norefine'].std(),                       
+                 'err_emalign_refine': df_accuracy['err_emalign_refine'].std(), 
+                 'err_eman' : df_accuracy['err_eman'].std(), 
+                 'err_xmipp' : df_accuracy['err_xmipp'].std()}
 
-with open('output.tex', 'w') as f:
+df_accuracy = df_accuracy.append(mean_row, ignore_index=True)
+df_accuracy = df_accuracy.append(std_row, ignore_index=True)
+#print(df_summary.to_string())
+
+latex_code = df_accuracy.to_latex(index=False,
+                header = ['sym', 'EMDID', 'EMalign(NR)', 'EMalign(R)', 
+                          'EMAN', 'Xmipp'],
+                float_format = '%.3f',
+                column_format = 'l r r r r r')
+
+with open('results_comparisons_accuracy.tex', 'w') as f:
     f.write(latex_code)
 
 
-#%% Create a table summarizing the comparison to EMAN
+df_timing = df[['sym', 'emdid', 'size_orig', 't_norefine', 't_refine','t_eman','t_xmipp']]
+latex_code = df_timing.to_latex(index=False,
+                header = ['symmetry', 'EMDID', 'size', 'EMalign(NR)', 'EMalign(R)', 
+                          'EMAN', 'Xmipp'],
+                float_format = '%.3f',
+                column_format = 'l r r r r r r')
 
-df = pd.read_excel("results_comparisons.xlsx")
+with open('results_comparisons_timing.tex', 'w') as f:
+    f.write(latex_code)
 
-mean_err_norefine = (df["err_ang1_norefine"]+df["err_ang2_norefine"]).mean()
-std_err_norefine = (df["err_ang1_norefine"]+df["err_ang2_norefine"]).std()
-mean_err_refine = (df["err_ang1_refine"]+df["err_ang2_refine"]).mean()
-std_err_refine = (df["err_ang1_refine"]+df["err_ang2_refine"]).std()
-mean_err_eman = (df["err_ang1_eman"]+df["err_ang2_eman"]).mean()
-std_err_eman = (df["err_ang1_eman"]+df["err_ang2_eman"]).std()
 
 # Sppedup
-speedup_norefine = ((df["t_eman"]-df["t_norefine"])/df["t_eman"]).mean()
-speedup_refine = ((df["t_eman"]-df["t_refine"])/df["t_eman"]).mean()
+speedup_norefine_eman = ((df["t_eman"]-df["t_norefine"])/df["t_norefine"]).mean()
+speedup_refine_eman = ((df["t_eman"]-df["t_refine"])/df["t_refine"]).mean()
+speedup_norefine_xmipp = ((df["t_xmipp"]-df["t_norefine"])/df["t_norefine"]).mean()
+speedup_refine_xmipp = ((df["t_xmipp"]-df["t_refine"])/df["t_refine"]).mean()
 
-print("norefine mean error = {0:7.4f}    std = {1:7.4f}".format(
-    mean_err_norefine,std_err_norefine))
+print("Norefine is faster by eman in {0:7.4f} percent".format(speedup_norefine_eman*100))
+print("Refine is faster than eman in {0:7.4f} percent".format(speedup_refine_eman*100))
+print("Norefine is faster by xmipp in {0:7.4f} percent".format(speedup_norefine_xmipp*100))
+print("Refine is faster than xmipp in {0:7.4f} percent".format(speedup_refine_xmipp*100))
 
-print("refine mean error = {0:7.4f}    std = {1:7.4f}".format(
-    mean_err_refine,std_err_refine))
+#%% Create table summarizing noise robustness
 
-print("eman mean error = {0:7.4f}    std = {1:7.4f}".format(
-    mean_err_eman,std_err_eman))
+df = pd.read_excel("results_snr.xlsx")
 
-print("Norefine is faster by eman in {0:7.4f} percent".format(speedup_norefine*100))
-print("Refine is faster than eman in {0:7.4f} percent".format(speedup_refine*100))
+# Create new columns with the total error for each method.
+df['err_emalign_norefine'] = df['err_ang1_norefine'] + df['err_ang2_norefine']
+df['err_emalign_refine'] = df['err_ang1_refine'] + df['err_ang2_refine']
+df['err_eman'] = df['err_ang1_eman'] + df['err_ang2_eman']
+df['err_xmipp'] = df['err_ang1_xmipp'] + df['err_ang2_xmipp']
+
+# Format the SNR column
+df['snr'] = df['snr'].apply(lambda x: '1/{0:d}'.format(int(1/x)) if x<1
+                            else ('{0:d}'.format(int(x)) if x==1 else'clean'))
+
+df_accuracy = df[['snr', 'err_emalign_norefine', 'err_emalign_refine', 'err_eman', 
+                 'err_xmipp']]
+
+#print(df_summary.to_string())
+
+latex_code = df_accuracy.to_latex(index=False,
+                header = ['SNR', 'EMalign(NR)', 'EMalign(R)', 
+                          'EMAN', 'Xmipp',],
+                float_format = '%.3f',
+                column_format = 'l r r r r r r r r')
+
+with open('results_snr_accuracy.tex', 'w') as f:
+    f.write(latex_code)
+    
+df_timing = df[['snr', 't_norefine', 't_refine', 't_eman', 
+                 't_xmipp']]
+
+latex_code = df_timing.to_latex(index=False,
+                header = ['SNR', 'EMalign(NR)', 'EMalign(R)', 
+                          'EMAN', 'Xmipp',],
+                float_format = '%.3f',
+                column_format = 'l r r r r r r r r')
+
+with open('results_snr_timing.tex', 'w') as f:
+    f.write(latex_code)
