@@ -70,6 +70,10 @@ def cryo_downsample(x, out_shape):
     dtype_in = x.dtype
     in_shape = np.array(x.shape)
     out_shape = np.array([s if 0 < s < in_shape[i] else in_shape[i] for i, s in enumerate(out_shape)])
+    
+    if all(in_shape==out_shape):
+        return x.copy()  # No need to do anything
+    
     fourier_dims = np.array([i for i, s in enumerate(out_shape) if 0 < s < in_shape[i]])
     size_in = np.prod(in_shape[fourier_dims])
     size_out = np.prod(out_shape[fourier_dims])
