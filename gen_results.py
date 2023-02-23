@@ -968,7 +968,8 @@ def results_noise():
                 
         vol = src.read_write.read_mrc('./data/map_2660_ref.mrc')
         # Downsample to size 128 for speedup
-        sz = 128
+        #sz = 128
+        sz = vol.shape[0]
         vol = src.common_finufft.cryo_downsample(vol,[sz,sz,sz])
         # Generate a random rotation
         R = np.squeeze(src.rand_rots.rand_rots(1))
@@ -1026,7 +1027,7 @@ def results_noise():
             vol_noisy = vol+n1
             vol_transformed_noisy = vol_transformed+n2
                
-            plt.imshow(vol_noisy[64])
+            plt.imshow(vol_noisy[int(sz/2)], cmap='gray')
             #plt.imshow(vol_transformed_noisy[64])
             plt.axis('off')            
             plt.axis('image')
@@ -1274,7 +1275,7 @@ def test_stability():
 
 #results_varying_downsampling()
 #results_varying_Nprojs()
-results_comparison_to_other_packages()
-#results_noise()
+#results_comparison_to_other_packages()
+results_noise()
 
 #test_stability()
