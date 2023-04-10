@@ -2,14 +2,14 @@
 
 A algorithm for aligning rotation, reflection, and translation between volumes. 
 
-Current version: 1.0.3
+Current version: 1.0.4
 
 Project's homepage: https://github.com/ShkolniskyLab/emalign
 
 Date: 12/2022
 
 Please cite the following paper when using this package: 
-XXX
+Harpaz, Y., & Shkolnisky, Y. (2023). Three-dimensional alignment of density maps in cryo-electron microscopy. Biological Imaging, 3, E8. doi:10.1017/S2633903X23000089
 
 <h2>Recommended Environments:</h2>
 The package has been tested on Ubuntu 18.04 and Windows 10. It should probably work on other versions of Windows and Linux, but has not been tested on them yet. Similarly for macOS.
