@@ -8,6 +8,7 @@ from src.read_write import read_mrc, copy_and_rename
 from src.gentestdata import gentestdata
 import mrcfile
 import scipy.ndimage
+import numpy as np
 
 
 #from src.common_finufft import cryo_downsample
@@ -80,8 +81,21 @@ def main():
         logger.disabled = False
     
     # Load volumes
-    vol1 = read_mrc(args.vol1)
+    vol1 = read_mrc(args.vol1)            
     vol2 = read_mrc(args.vol2)
+
+
+    # Handle the case where vol1 is 4D
+    if (vol1.ndim == 4) and (vol1.shape[-1] == 1):
+        vol1 = np.squeeze(vol1)
+    elif vol1.ndim != 3:
+        raise ValueError("Volumes must be three-dimensional or fourdimensional with singleton first dimension ")   
+
+    # Handle the case where vol2 is 4D
+    if (vol2.ndim == 4) and (vol2.shape[-1] == 1):
+        vol2 = np.squeeze(vol2)
+    elif vol2.ndim != 3:
+        raise ValueError("Volumes must be three-dimensional or fourdimensional with singleton first dimension ")   
     
     if not ((vol1.shape[1]==vol1.shape[0]) and (vol1.shape[2]==vol1.shape[0]) 
             and (vol1.shape[0] % 2 == 0)):
