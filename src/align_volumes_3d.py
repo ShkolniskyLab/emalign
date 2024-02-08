@@ -47,7 +47,7 @@ def fast_alignment_3d(sym, vol1, vol2, Nprojs=30, trueR=None, G_group=None, refr
     logger = logging.getLogger()
     if verbose == 0:
         logger.disabled = True
-        
+
     # Generate reference projections from vol2:
     logger.info('Generating %i reference projections.', Nprojs)
     Rots = genRotationsGrid(75)
@@ -290,6 +290,12 @@ def align_volumes(vol1, vol2, verbose=0, opt=None):
                          alignment fails.
         opt.Nprojs- Number of projections to use for the alignment.
                      Defult is 30.
+        opt.no_refine   True/False. Do not refine the translation parameter
+                        estimated using phase correlation. Default is False
+                        (that is, do refine the estimate)
+        opt.only_estimate_rotation  True/False. Estimate only the rotation
+                between the volumes. Do not estimate the translation and do
+                not generate aligned_volume. Default is False.
         opt.trueR-  True rotation matrix between vol2 and vol1, such that
                 vol2 = fastrotate3d(vol1,true_R). In the case of reflection,
                 true_R should be the rotation between the volumes such that
@@ -305,7 +311,7 @@ def align_volumes(vol1, vol2, verbose=0, opt=None):
 
     logger = logging.getLogger()
 
-    if verbose is False:
+    if verbose==0:
         logger.disabled = True
     else:
         logger.disabled = False
@@ -321,6 +327,10 @@ def align_volumes(vol1, vol2, verbose=0, opt=None):
 
     if not hasattr(opt, 'no_refine'):
         opt.no_refine = False
+
+    if not hasattr(opt, 'only_estimate_rotation'):
+        opt.only_estimate_rotation = False
+
 
     ### Check options:
     if hasattr(opt, 'sym'):
@@ -414,10 +424,10 @@ def align_volumes(vol1, vol2, verbose=0, opt=None):
     if np.size(estdx_ds) != 3 or np.size(estdx_J_ds) != 3:
         raise Warning("***** Translation estimation failed *****")
 
-    # Prepare FFTW data to avoid unnecessary calaculations        
+    # Prepare FFTW data to avoid unnecessary calaculations
     vol2_aligned_ds = src.reshift_vol.reshift_vol_int(vol2_aligned_ds, estdx_ds)
     vol2_aligned_J_ds = src.reshift_vol.reshift_vol_int(vol2_aligned_J_ds, estdx_J_ds)
-    
+
     no1 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_ds.ravel(), rowvar=False)[0, 1:])
     no2 = np.mean(np.corrcoef(vol1_ds.ravel(), vol2_aligned_J_ds.ravel(), rowvar=False)[0, 1:])
     logger.debug("no1=%f",no1)
@@ -459,37 +469,46 @@ def align_volumes(vol1, vol2, verbose=0, opt=None):
 
     logger.debug("bestR=\n%s",str(bestR))
     logger.info('Done aligning downsampled volumes')
-    logger.info('Applying estimated rotation to original volumes')
-    vol2aligned = fastrotate3d(vol2, bestR)
-    logger.info('Estimating shift for original volumes')
-    bestdx = register_translations_3d(vol1, vol2aligned)
-    logger.debug("bestdx=%s",str(bestdx))
-    # if np.size(bestdx) != 3 :
-    #    raise Warning("***** Translation estimation failed *****")
 
-    if not opt.no_refine:
-        logger.info('Refining shift for original volumes')
-        bestdx = refine3DshiftBFGS(vol1, vol2, bestdx)
+    bestdx = None
+    vol2aligned = None
+    bestcorr = None
+
+    if not opt.only_estimate_rotation:
+        logger.info('Applying estimated rotation to original volumes')
+        vol2aligned = fastrotate3d(vol2, bestR)
+        logger.info('Estimating shift for original volumes')
+        bestdx = register_translations_3d(vol1, vol2aligned)
         logger.debug("bestdx=%s",str(bestdx))
-    else:
-        logger.info('Skipping shift refinement')
+        # if np.size(bestdx) != 3 :
+            #    raise Warning("***** Translation estimation failed *****")
 
-    logger.info('Translating original volumes')
-    if (np.round(bestdx) == bestdx).all():
-        # Use fast method
-        vol2aligned = src.reshift_vol.reshift_vol_int(vol2aligned, bestdx)
-    else:
-        vol2aligned = reshift_vol(vol2aligned, bestdx)
+        if not opt.no_refine:
+            logger.info('Refining shift for original volumes')
+            bestdx = refine3DshiftBFGS(vol1, vol2, bestdx)
+            logger.debug("bestdx=%s",str(bestdx))
+        else:
+            logger.info('Skipping shift refinement')
 
-    logger.info('Computing correlations of original volumes')
-    bestcorr = np.mean(np.corrcoef(vol1.ravel(), vol2aligned.ravel(), rowvar=False)[0, 1:])
+        logger.info('Translating original volumes')
+        if (np.round(bestdx) == bestdx).all():
+            # Use fast method
+            vol2aligned = src.reshift_vol.reshift_vol_int(vol2aligned, bestdx)
+        else:
+            vol2aligned = reshift_vol(vol2aligned, bestdx)
+
+        logger.info('Computing correlations of original volumes')
+        bestcorr = np.mean(np.corrcoef(vol1.ravel(), vol2aligned.ravel(), rowvar=False)[0, 1:])
 
     logger.info('Estimated rotation:\n%s',str(bestR))
-    logger.info('Estimated translations: [%.3f, %.3f, %.3f]', bestdx[0], bestdx[1], bestdx[2])
-    logger.info('Correlation between original aligned volumes is %.4f', bestcorr)
-    # Accurate error calculation:
-    # The difference between the estimated and reference rotation should be an
-    # element from the symmetry group:
+
+    if not opt.only_estimate_rotation:
+        logger.info('Estimated translations: [%.3f, %.3f, %.3f]', bestdx[0], bestdx[1], bestdx[2])
+        logger.info('Correlation between original aligned volumes is %.4f', bestcorr)
+        # Accurate error calculation:
+        # The difference between the estimated and reference rotation should be an
+        # element from the symmetry group:
+
     if refrot == 1 and G_flag == 1:
         n_g = np.size(G, 0)
         g_est_t = trueR.T @ bestR.T
